@@ -1,0 +1,30 @@
+---
+title: "Agriculture processing"
+format:
+  html:
+    code-fold: true
+jupyter: python3
+---
+
+```{python}
+import os
+os.chdir("..")
+```
+
+```{python}
+import pandas as pd
+from pygam import LinearGAM, s, f
+```
+
+```{python}
+df = pd.read_stata("data/processed/empleados.dta")
+```
+
+```{python}
+df2 = df[df["log_employment_avg"].notnull() & df["log_in_labor_force"].notnull() & df["empleo_pr"].notnull()]
+gam = LinearGAM(s(0) + s(1) + f(2)).fit(df2[["log_in_labor_force", "empleo_pr"]].values, df2[["log_employment_avg"]].values)
+```
+
+```{python}
+gam = LinearGAM(s(0) + s(1) + f(1)).fit(df2[["log_in_labor_force"]].values, df2[["log_employment_avg"]].values)
+```
