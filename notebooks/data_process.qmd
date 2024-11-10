@@ -1,0 +1,25 @@
+---
+title: "Agriculture processing"
+format:
+  html:
+    code-fold: true
+jupyter: python3
+---
+
+```{python}
+import os
+os.chdir("..")
+```
+
+```{python}
+import pandas as pd
+from pygam.datasets import wage
+import numpy as np
+from pygam import LinearGAM, s, f
+from src.data.data_process import DataReg
+```
+
+```{python}
+d = DataReg()
+d.make_dp03_dataset()
+```

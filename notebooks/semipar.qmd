@@ -20,6 +20,7 @@ from pygam import LinearGAM, s, f
 
 ```{python}
 df = pd.read_stata("data/external/zipcode.dta")
+df["qtr"] = df["qtr"].astype("int")
 df
 ```
 
