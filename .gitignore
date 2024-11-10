@@ -164,3 +164,8 @@ cython_debug/
 # Ignore data files
 data/processed/
 data/raw/
+data/external/
+
+# Data files
+*.dta
+*.sqlite

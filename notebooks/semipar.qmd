@@ -13,18 +13,37 @@ os.chdir("..")
 
 ```{python}
 import pandas as pd
+from pygam.datasets import wage
+import numpy as np
 from pygam import LinearGAM, s, f
 ```
 
 ```{python}
-df = pd.read_stata("data/processed/empleados.dta")
+df = pd.read_stata("data/external/zipcode.dta")
+df
 ```
 
 ```{python}
 df2 = df[df["log_employment_avg"].notnull() & df["log_in_labor_force"].notnull() & df["empleo_pr"].notnull()]
+```
+
+```{python}
+df2[["log_in_labor_force"]].values
+```
+
+```{python}
 gam = LinearGAM(s(0) + s(1) + f(2)).fit(df2[["log_in_labor_force", "empleo_pr"]].values, df2[["log_employment_avg"]].values)
 ```
 
 ```{python}
-gam = LinearGAM(s(0) + s(1) + f(1)).fit(df2[["log_in_labor_force"]].values, df2[["log_employment_avg"]].values)
+gam = LinearGAM(s(0)).fit(df2[["log_in_labor_force"]].values, df2[["log_employment_avg"]].values)
+
+```
+
+```{python}
+lam = np.logspace(-3, 5, 5)
+lams = [lam] * 3
+
+gam.gridsearch(X, y, lam=lams)
+gam.summary()
 ```

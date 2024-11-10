@@ -1,0 +1,24 @@
+---
+title: "Agriculture processing"
+format:
+  html:
+    code-fold: true
+jupyter: python3
+---
+
+```{python}
+import pandas as pd
+from pygam import LinearGAM, s, f
+from pygam.datasets import wage
+```
+
+
+```{python}
+X, y = wage()
+```
+
+
+```{python}
+gam = LinearGAM(s(0) + s(1) + f(2)).fit(X, y)
+gam.summary()
+```
