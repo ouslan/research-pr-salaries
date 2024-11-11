@@ -12,18 +12,25 @@ os.chdir("..")
 ```
 
 ```{python}
-import pandas as pd
+from src.data.data_process import DataReg
 from pygam.datasets import wage
-import numpy as np
 from pygam import LinearGAM, s, f
+import pandas as pd
+import numpy as np
+import ibis
+
+ibis.options.interactive = True
 ```
 
 ```{python}
-df = pd.read_stata("data/external/zipcode.dta")
-df["qtr"] = df["qtr"].astype("int")
-df
+d = DataReg()
+df = d.semipar_data()
 ```
 
+
+```{python}
+df.year.min()
+```
 ```{python}
 df2 = df[df["log_employment_avg"].notnull() & df["log_in_labor_force"].notnull() & df["empleo_pr"].notnull()]
 ```
