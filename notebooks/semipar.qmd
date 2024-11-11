@@ -13,33 +13,37 @@ os.chdir("..")
 
 ```{python}
 from src.data.data_process import DataReg
-from pygam import PoissonGAM, s, te
+from pygam import PoissonGAM, s, te, LinearGAM,GAM
+import matplotlib.pyplot as plt
+from mpl_toolkits import mplot3d
 import pandas as pd
 import numpy as np
 import ibis
+
+ibis.options.interactive = True
 ```
 
 ```{python}
 d = DataReg()
-df = d.semipar_data().to_pandas()
+df = d.semipar_data()
 ```
 
 ```{python}
-df
+df = df.select(["year", "qtr", "ein", "total_employment", "p_snap", "car_truck_or_van_nn_drove_alone", "p_with_social_security", "population_16_years_and_over", "own_children_under_6_years", "own_children_6_to_17_years", "with_supplemental_security_incom"]).to_pandas()
 ```
 
 ```{python}
-gam = PoissonGAM(s(0, n_splines=200) + te(3, 1) + s(2)).fit(df[["total_wages", "mean_travel_time_to_work_minutes"]].values, df[["total_employment"]].values)
+var = ["p_snap", "car_truck_or_van_nn_drove_alone", "p_with_social_security", "population_16_years_and_over", "own_children_under_6_years", "own_children_6_to_17_years", "with_supplemental_security_incom"]
+gam = GAM(s(0, n_splines=200) + te(6, 1) + s(2)).fit(df[var].values, df[["total_employment"]].values)
 gam.summary()
 ```
 
 ```{python}
-from pygam import PoissonGAM, s, te
-from pygam.datasets import chicago
+plt.ion()
+plt.rcParams['figure.figsize'] = (12, 8)
+XX = gam.generate_X_grid(term=1, meshgrid=True)
+Z = gam.partial_dependence(term=1, X=XX, meshgrid=True)
 
-X, y = chicago(return_X_y=True)
-
-gam = PoissonGAM(s(0, n_splines=200) + te(3, 1) + s(2)).fit(X, y)
-gam.summary()
-X.shape
+ax = plt.axes(projection='3d')
+ax.plot_surface(XX[0], XX[1], Z, cmap='viridis')
 ```
