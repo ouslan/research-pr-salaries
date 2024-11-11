@@ -13,7 +13,7 @@ os.chdir("..")
 
 ```{python}
 from src.data.data_process import DataReg
-from pygam import PoissonGAM, s, te, LinearGAM,GAM
+from pygam import PoissonGAM, s, te, LinearGAM, GAM
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 import pandas as pd
@@ -46,4 +46,8 @@ Z = gam.partial_dependence(term=1, X=XX, meshgrid=True)
 
 ax = plt.axes(projection='3d')
 ax.plot_surface(XX[0], XX[1], Z, cmap='viridis')
+```
+
+```{python}
+gam.accuracy(X, y)
 ```
