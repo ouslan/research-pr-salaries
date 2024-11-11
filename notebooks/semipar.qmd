@@ -13,45 +13,33 @@ os.chdir("..")
 
 ```{python}
 from src.data.data_process import DataReg
-from pygam.datasets import wage
-from pygam import LinearGAM, s, f
+from pygam import PoissonGAM, s, te
 import pandas as pd
 import numpy as np
 import ibis
-
-ibis.options.interactive = True
 ```
 
 ```{python}
 d = DataReg()
-df = d.semipar_data()
-```
-
-
-```{python}
-df.year.min()
-```
-```{python}
-df2 = df[df["log_employment_avg"].notnull() & df["log_in_labor_force"].notnull() & df["empleo_pr"].notnull()]
+df = d.semipar_data().to_pandas()
 ```
 
 ```{python}
-df2[["log_in_labor_force"]].values
+df
 ```
 
 ```{python}
-gam = LinearGAM(s(0) + s(1) + f(2)).fit(df2[["log_in_labor_force", "empleo_pr"]].values, df2[["log_employment_avg"]].values)
-```
-
-```{python}
-gam = LinearGAM(s(0)).fit(df2[["log_in_labor_force"]].values, df2[["log_employment_avg"]].values)
-
-```
-
-```{python}
-lam = np.logspace(-3, 5, 5)
-lams = [lam] * 3
-
-gam.gridsearch(X, y, lam=lams)
+gam = PoissonGAM(s(0, n_splines=200) + te(3, 1) + s(2)).fit(df[["total_wages", "mean_travel_time_to_work_minutes"]].values, df[["total_employment"]].values)
 gam.summary()
+```
+
+```{python}
+from pygam import PoissonGAM, s, te
+from pygam.datasets import chicago
+
+X, y = chicago(return_X_y=True)
+
+gam = PoissonGAM(s(0, n_splines=200) + te(3, 1) + s(2)).fit(X, y)
+gam.summary()
+X.shape
 ```
