@@ -1,7 +1,7 @@
 from ..dao.dp03_table import create_dp03
 from ..jp_qcew.src.data.data_process import cleanData
 import pandas as pd
-import polars as pl
+# import polars as pl
 
 class DataReg(cleanData):
     
@@ -32,9 +32,9 @@ class DataReg(cleanData):
         df_qcew = df_qcew.mutate(
          total_employment=(df_qcew.first_month_employment + df_qcew.second_month_employment + df_qcew.third_month_employment)/3
         )
-        df_qcew = df_qcew.group_by(["year", "qtr", "ein", "phys_addr_5_zip"]).aggregate(
-            [df_qcew.total_employment.sum().name("total_employment"), df_qcew.total_wages.sum().name("total_wages")]
-            )
+        # df_qcew = df_qcew.group_by(["year", "qtr", "ein", "phys_addr_5_zip"]).aggregate(
+        #     [df_qcew.total_employment.sum().name("total_employment"), df_qcew.total_wages.sum().name("total_wages")]
+        #     )
         df_qcew = df_qcew.rename(zipcode="phys_addr_5_zip")
 
         return df_qcew.join(df_dp03, predicates=["year", "qtr", "zipcode"], how="inner")
