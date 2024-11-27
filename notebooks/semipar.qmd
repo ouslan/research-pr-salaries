@@ -7,16 +7,10 @@ jupyter: python3
 ---
 
 ```{python}
-import os
-os.chdir("..")
-```
-
-```{python}
 from pygam import PoissonGAM, s, te, LinearGAM, GAM
 from src.data.data_process import DataReg
-from mpl_toolkits import mplot3d
 import matplotlib.pyplot as plt
-import geopandas as gpd
+#import geopandas as gpd
 import pandas as pd
 import numpy as np
 import ibis
@@ -36,7 +30,7 @@ df = df.mutate(
     )
 df = df.select(["year", "qtr", "ein", "total_employment", "p_snap", "car_truck_or_van_nn_drove_alone", "p_with_social_security", "population_16_years_and_over", "own_children_under_6_years", "own_children_6_to_17_years", "with_supplemental_security_incom", "latitude", "longitude"]).to_pandas()
 
-var = ["year", "p_snap", "car_truck_or_van_nn_drove_alone", "p_with_social_security", "population_16_years_and_over", "own_children_under_6_years", "own_children_6_to_17_years", "with_supplemental_security_incom", "latitude", "longitude"]
+var = ["year", "p_snap",  "latitude", "longitude"]
 len(var)
 ```
 
@@ -50,7 +44,7 @@ df
 ```{python}
 # GAMM Mix model (Random Effects)
 # binomal & categoricalas faactor 
-gam = LinearGAM(s(0, n_splines=200) + s(1, n_splines=200) + s(2, n_splines=200) + s(3, n_splines=200) + s(4, n_splines=200) + s(5, n_splines=200) + s(6, n_splines=200) + s(7, n_splines=200) + te(8, 9)).fit(df[var].values, df[["total_employment"]].values)
+gam = LinearGAM(s(0, n_splines=200) + s(1, n_splines=200) + te(2, 3)).fit(df[var].values, df[["total_employment"]].values)
 gam.summary()
 ```
 
@@ -78,7 +72,7 @@ gam.summary()
 
 ```{python}
 plt.figure()
-fig, axs = plt.subplots(1,8)
+fig, axs = plt.subplots(1,2)
 
 titles = var
 for i, ax in enumerate(axs):

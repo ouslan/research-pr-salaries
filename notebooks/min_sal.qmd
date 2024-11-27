@@ -1,0 +1,83 @@
+---
+title: "Agriculture processing"
+format:
+  html:
+    code-fold: true
+jupyter: python3
+---
+
+```{python}
+from pygam import PoissonGAM, s, te, LinearGAM, GAM
+from src.data.data_process import DataReg
+import geopandas as gpd
+import pandas as pd
+import numpy as np
+import ibis
+
+ibis.options.interactive = True
+```
+
+```{python}
+d = DataReg()
+df = d.semipar_data().select(["year", "qtr", "naics_code", "zipcode", "total_employment", "total_wages", "latitude", "longitude"])
+df = df.mutate(
+    wages_employee=df.total_wages/df.total_employment,
+    date=df.year.cast("string") + "Q" + df.qtr.cast("string"),
+    )
+df = df.mutate(
+    min_mage=ibis.case()
+        .when((df.year >= 2002) & (df.year < 2009), 5.15 * 65 * 8)
+        .when((df.year >= 2010) & (df.year < 2023), 7.25 * 65 * 8)
+        .when((df.year == 2023), 8.5 * 65 * 8)
+        .when((df.year == 2024), 10.5 * 65 * 8)
+        .else_(None)
+        .end(),
+)
+df.group_by(["year", "qtr", "d.semipar_data()", "naics_code"]).aggregate([
+    df.wages_employee.mean().name("wage_mean")
+    ])
+```
+
+```{python}
+df = d.semipar_data().select("phys_addr_city")
+df = df.mutate(
+    municipalities=df.phys_addr_city.lower().replace("ü", "u").replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u").replace("ñ", "n"),
+    phys_addr_city=df.phys_addr_city.lower().replace("ü", "u").replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u").replace("ñ", "n")
+    )
+```
+
+```{python}
+d.semipar_data()
+```
+
+
+```{python}
+zips = gpd.read_file("data/external/zip_shape.zip", engine="pyogrio")
+zips = zips[zips["ZCTA5CE20"].str.startswith("00")]
+zips[["ZCTA5CE20", "geometry"]].rename(columns={"ZCTA5CE20":"zipcode"})
+```
+
+```{python}
+zips = gpd.read_file("data/external/zip_shape.zip", engine="pyogrio")
+zips = zips[zips["ZCTA5CE20"].str.startswith("00")]
+zips[["ZCTA5CE20", "geometry"]].rename(columns={"ZCTA5CE20":"zipcode"})
+```
+
+```{python}
+zips = gpd.read_file("data/external/zip_shape.zip", engine="pyogrio")
+zips = zips[zips["ZCTA5CE20"].str.startswith("00")]
+
+gdf = gpd.read_file("data/external/county.zip", engine="pyogrio")
+gdf = gdf[gdf["STATEFP"].str.startswith("72")].rename(columns={"geometry":"count_geo"})
+
+master_df = gpd.GeoDataFrame(columns=["ZCTA5CE20", "GEOID"])
+
+for geo in gdf["GEOID"].values:
+    tmp = gdf[gdf["GEOID"] == geo]
+    tmp = zips.clip(tmp['count_geo'])
+    tmp["GEOID"] = geo
+    master_df = pd.concat([master_df, tmp[["ZCTA5CE20", "GEOID"]]], ignore_index=True)
+master_df = pd.merge(zips, master_df.drop_duplicates(subset=['ZCTA5CE20']),on="ZCTA5CE20", validate="1:1") 
+master_df = pd.merge(master_df, gdf, on="GEOID", validate="m:1") 
+master_df[["GEOID20", "ZCTA5CE20"]]
+```
