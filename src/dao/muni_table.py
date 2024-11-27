@@ -5,5 +5,8 @@ from typing import Optional
 
 class MuniTable(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    zipcode: str
-    geometry = Column(Geometry("MULTIPOLYGON"))
+    municipality:  str
+    geo_id: str
+
+def create_muni(engine):
+    SQLModel.metadata.create_all(engine)

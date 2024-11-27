@@ -13,3 +13,4 @@ ibis-sqlite==9.5.0
 tqdm==4.67.0
 jupyter==1.1.1
 geopandas==1.0.1  
+geoalchemy2==0.16.0

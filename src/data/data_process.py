@@ -1,10 +1,13 @@
 from ..dao.dp03_table import create_dp03
 from ..jp_qcew.src.data.data_process import cleanData
+from ..dao.zips_table import create_zips
+from ..dao.muni_table import create_muni
 import pandas as pd
+import geopandas as gpd
 # import polars as pl
 
 class DataReg(cleanData):
-    
+
     def __init__(self, saving_dir:str='data/', database_url:str="sqlite:///db.sqlite", debug:bool=True):
         super().__init__(saving_dir, database_url, debug)
 
@@ -15,12 +18,15 @@ class DataReg(cleanData):
         df["zipcode"] = df["zipcode"].astype("str").str.zfill(5)
         self.conn.insert("dp03table", df)
         self.debug_log("dp03table created")
-    
+
     def semipar_data(self):
-        if "dp03table" not in self.conn.list_tables():
+        if "dp03table" not in self.conn.list_tables() or self.conn.table("dp03table").count() == 0:
             self.make_dp03_dataset()
-        if "qcewtable" not in self.conn.list_tables():
+        if "qcewtable" not in self.conn.list_tables() or self.conn.table("qcewtable").count() == 0:
             self.make_qcew_dataset()
+
+        self.make_spatial_tabel()
+
         df_qcew = self.conn.table("qcewtable")
         df_dp03 = self.conn.table("dp03table").drop("id")
 
@@ -38,3 +44,32 @@ class DataReg(cleanData):
         df_qcew = df_qcew.rename(zipcode="phys_addr_5_zip")
 
         return df_qcew.join(df_dp03, predicates=["year", "qtr", "zipcode"], how="inner")
+
+
+    def make_spatial_tabel(self):
+        if "zipstable" not in self.conn.list_tables():
+            create_zips(self.engine)
+        if "munitable" not in self.conn.list_tables():
+            create_muni(self.engine)
+
+        zips = gpd.read_file(f"{self.saving_dir}external/zip_shape.zip", engine="pyogrio")
+        zips = zips[zips["ZCTA5CE20"].str.startswith("00")]
+
+        gdf = gpd.read_file(f"{self.saving_dir}external/county.zip", engine="pyogrio")
+        gdf = gdf[gdf["STATEFP"].str.startswith("72")].rename(columns={"geometry":"count_geo"})
+
+        master_df = gpd.GeoDataFrame(columns=["ZCTA5CE20", "GEOID"])
+        for geo in gdf["GEOID"].values:
+            tmp = gdf[gdf["GEOID"] == geo]
+            tmp = zips.clip(tmp['count_geo'])
+            tmp["GEOID"] = geo
+            master_df = pd.concat([master_df, tmp[["ZCTA5CE20", "GEOID"]]], ignore_index=True)
+        master_df = pd.merge(zips, master_df.drop_duplicates(subset=['ZCTA5CE20']),on="ZCTA5CE20", validate="1:1") 
+        master_df = pd.merge(master_df, gdf, on="GEOID", validate="m:1") 
+        master_df = master_df[["GEOID20", "ZCTA5CE20"]].rename(columns={"GEOID20":"geo_id", "ZCTA5CE20":"zipcode"})
+        gdf = gdf[["GEOID", "NAME"]].rename(columns={"GEOID":"geo_id", "NAME":"municipality"}).reset_index(drop=True)
+
+        self.conn.insert("zipstable", master_df)
+        self.debug_log("zipstable created")
+        self.conn.insert("munitable", gdf)
+        self.debug_log("munitable created")
