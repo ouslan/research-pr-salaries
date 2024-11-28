@@ -12,6 +12,7 @@ from src.data.data_process import DataReg
 from src.dao.zips_table import create_zips
 from src.dao.muni_table import create_muni
 import geopandas as gpd
+import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import ibis
@@ -23,11 +24,18 @@ ibis.options.interactive = True
 d = DataReg()
 df = d.semipar_data().select(["year", "qtr", "naics_code", "zipcode", "total_employment", "total_wages", "latitude", "longitude"])
 df = df.mutate(
+    total_wages=df.total_wages.fill_null(0),
+    total_employment=df.total_employment.fill_null(0)
+)
+df = df.mutate(
     wages_employee=df.total_wages/df.total_employment,
     date=df.year.cast("string") + "Q" + df.qtr.cast("string"),
     )
 df = df.mutate(
-    min_mage=ibis.case()
+    wages_employee=df.wages_employee.fill_null(0)
+)
+df = df.mutate(
+    min_wage=ibis.case()
         .when((df.year >= 2002) & (df.year < 2009), 5.15 * 65 * 8)
         .when((df.year >= 2010) & (df.year < 2023), 7.25 * 65 * 8)
         .when((df.year == 2023), 8.5 * 65 * 8)
@@ -35,60 +43,85 @@ df = df.mutate(
         .else_(None)
         .end(),
 )
-df.group_by(["year", "qtr", "naics_code"]).aggregate([
-    df.wages_employee.mean().name("wage_mean")
-    ])
+df
+```
+
+
+```{python}
+zips_df = d.conn.table("zipstable").drop("id").distinct(on="zipcode", keep='first')
+muni_df = d.conn.table("munitable").drop("id")
+df = df.join(zips_df, "zipcode", how="inner")
+# df2 = df2.join(muni_df, predicates=["geo_id"], how="inner").distinct(on="geo_id", keep='first')
+df
+```
+
+
+```{python}
+mini = df.group_by(["year", "qtr", "naics_code", "geo_id"]).aggregate([
+    df.wages_employee.mean().name("mw_industry")
+])
+df = df.join(mini, predicates=["year", "qtr", "naics_code", "geo_id"], how="inner")
+df
 ```
 
 ```{python}
-df = d.semipar_data().select("phys_addr_city")
 df = df.mutate(
-    municipalities=df.phys_addr_city.lower().replace("ü", "u").replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u").replace("ñ", "n"),
-    phys_addr_city=df.phys_addr_city.lower().replace("ü", "u").replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u").replace("ñ", "n")
+    k_index=df.min_wage/df.mw_industry
     )
-```
-
-```{python}
-d.semipar_data()
+df
 ```
 
 
 ```{python}
-zips = gpd.read_file("data/external/zip_shape.zip", engine="pyogrio")
-zips = zips[zips["ZCTA5CE20"].str.startswith("00")]
-zips[["ZCTA5CE20", "geometry"]].rename(columns={"ZCTA5CE20":"zipcode"})
+
+df = df.to_pandas()
+var = ["year", "k_index",  "latitude", "longitude"]
 ```
 
 ```{python}
-zips = gpd.read_file("data/external/zip_shape.zip", engine="pyogrio")
-zips = zips[zips["ZCTA5CE20"].str.startswith("00")]
-zips[["ZCTA5CE20", "geometry"]].rename(columns={"ZCTA5CE20":"zipcode"})
+df = df[df["latitude"] != ""]
+df["latitude"] = df["latitude"].astype(float)
+df["longitude"] = df["longitude"].astype(float)
 ```
 
 ```{python}
-zips = gpd.read_file("data/external/zip_shape.zip", engine="pyogrio")
-zips = zips[zips["ZCTA5CE20"].str.startswith("00")]
-
-gdf = gpd.read_file("data/external/county.zip", engine="pyogrio")
-gdf = gdf[gdf["STATEFP"].str.startswith("72")].rename(columns={"geometry":"count_geo"})
-
-master_df = gpd.GeoDataFrame(columns=["ZCTA5CE20", "GEOID"])
-
-for geo in gdf["GEOID"].values:
-    tmp = gdf[gdf["GEOID"] == geo]
-    tmp = zips.clip(tmp['count_geo'])
-    tmp["GEOID"] = geo
-    master_df = pd.concat([master_df, tmp[["ZCTA5CE20", "GEOID"]]], ignore_index=True)
-master_df = pd.merge(zips, master_df.drop_duplicates(subset=['ZCTA5CE20']),on="ZCTA5CE20", validate="1:1") 
-master_df = pd.merge(master_df, gdf, on="GEOID", validate="m:1") 
-master_df = master_df[["GEOID20", "ZCTA5CE20"]].rename(columns={"GEOID20":"geo_id", "ZCTA5CE20":"zipcode"})
-gdf = gdf[["GEOID", "NAME"]].rename(columns={"GEOID":"geo_id", "NAME":"municipality"}).reset_index(drop=True)
+df = df[~df["k_index"].isnull()]
 ```
 
+```{python}
+# GAMM Mix model (Random Effects)
+# binomal & categoricalas faactor 
+gam = LinearGAM(s(0, n_splines=200) + s(1, n_splines=200) + te(2, 3)).fit(df[var].values, df[["total_employment"]].values)
+gam.summary()
+```
 
 ```{python}
-create_muni(d.engine)
-d.conn.insert("zipstable", master_df)
-d.conn.insert("munitable", gdf)
-# d.conn.list_tables()
+plt.ion()
+plt.rcParams['figure.figsize'] = (12, 8)
+XX = gam.generate_X_grid(term=2, meshgrid=True)
+Z = gam.partial_dependence(term=2, X=XX, meshgrid=True)
+
+ax = plt.axes(projection='3d')
+ax.plot_surface(XX[1], XX[1], Z, cmap='viridis')
+```
+
+```{python}
+X = df[var]
+y = df[["total_employment"]]
+gam = LinearGAM(s(0, n_splines=200) + s(1, n_splines=200)+ te(2, 3)).gridsearch(X.values, y.values)
+gam.summary()
+```
+
+```{python}
+plt.figure()
+fig, axs = plt.subplots(1,2)
+
+titles = var
+for i, ax in enumerate(axs):
+    XX = gam.generate_X_grid(term=i)
+    ax.plot(XX[:, i], gam.partial_dependence(term=i, X=XX))
+    ax.plot(XX[:, i], gam.partial_dependence(term=i, X=XX, width=.95)[1], c='r', ls='--')
+    if i == 0:
+        ax.set_ylim(-30,30)
+    ax.set_title(titles[i])
 ```

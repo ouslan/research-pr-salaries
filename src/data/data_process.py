@@ -20,12 +20,12 @@ class DataReg(cleanData):
         self.debug_log("dp03table created")
 
     def semipar_data(self):
-        if "dp03table" not in self.conn.list_tables() or self.conn.table("dp03table").count() == 0:
+        if "dp03table" not in self.conn.list_tables():
             self.make_dp03_dataset()
-        if "qcewtable" not in self.conn.list_tables() or self.conn.table("qcewtable").count() == 0:
+        if "qcewtable" not in self.conn.list_tables():
             self.make_qcew_dataset()
-
-        self.make_spatial_tabel()
+        if "munitable" not in self.conn.list_tables() or "zipstable" not in self.conn.list_tables():
+            self.make_spatial_table()
 
         df_qcew = self.conn.table("qcewtable")
         df_dp03 = self.conn.table("dp03table").drop("id")
@@ -43,14 +43,10 @@ class DataReg(cleanData):
         #     )
         df_qcew = df_qcew.rename(zipcode="phys_addr_5_zip")
 
-        return df_qcew.join(df_dp03, predicates=["year", "qtr", "zipcode"], how="inner")
+        return df_qcew#.join(df_dp03, predicates=["year", "qtr", "zipcode"], how="inner")
 
 
-    def make_spatial_tabel(self):
-        if "zipstable" not in self.conn.list_tables():
-            create_zips(self.engine)
-        if "munitable" not in self.conn.list_tables():
-            create_muni(self.engine)
+    def make_spatial_table(self):
 
         zips = gpd.read_file(f"{self.saving_dir}external/zip_shape.zip", engine="pyogrio")
         zips = zips[zips["ZCTA5CE20"].str.startswith("00")]
@@ -66,7 +62,7 @@ class DataReg(cleanData):
             master_df = pd.concat([master_df, tmp[["ZCTA5CE20", "GEOID"]]], ignore_index=True)
         master_df = pd.merge(zips, master_df.drop_duplicates(subset=['ZCTA5CE20']),on="ZCTA5CE20", validate="1:1") 
         master_df = pd.merge(master_df, gdf, on="GEOID", validate="m:1") 
-        master_df = master_df[["GEOID20", "ZCTA5CE20"]].rename(columns={"GEOID20":"geo_id", "ZCTA5CE20":"zipcode"})
+        master_df = master_df[["GEOID", "ZCTA5CE20"]].rename(columns={"GEOID":"geo_id", "ZCTA5CE20":"zipcode"})
         gdf = gdf[["GEOID", "NAME"]].rename(columns={"GEOID":"geo_id", "NAME":"municipality"}).reset_index(drop=True)
 
         self.conn.insert("zipstable", master_df)
