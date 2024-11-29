@@ -17,12 +17,12 @@ import pandas as pd
 import numpy as np
 import ibis
 
-ibis.options.interactive = True
+ibis.options.interactive = False
 ```
 
 ```{python}
 d = DataReg()
-df = d.semipar_data().select(["year", "qtr", "naics_code", "zipcode", "total_employment", "total_wages", "latitude", "longitude"])
+df = d.semipar_data().select(["year", "qtr", "naics_code", "zipcode", "ui_addr_5_zip", "total_employment", "total_wages", "latitude", "longitude"])
 df = df.mutate(
     total_wages=df.total_wages.fill_null(0),
     total_employment=df.total_employment.fill_null(0)
@@ -71,9 +71,9 @@ df = df.mutate(
 df
 ```
 
-
 ```{python}
-
+df = df.filter(~df.ui_addr_5_zip.startswith("00"))
+df = df.filter(df.year >= 2012)
 df = df.to_pandas()
 var = ["year", "k_index",  "latitude", "longitude"]
 ```
