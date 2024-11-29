@@ -4,7 +4,7 @@ from ..dao.zips_table import create_zips
 from ..dao.muni_table import create_muni
 import pandas as pd
 import geopandas as gpd
-# import polars as pl
+import os
 
 class DataReg(cleanData):
 
@@ -48,10 +48,19 @@ class DataReg(cleanData):
 
     def make_spatial_table(self):
 
-        zips = gpd.read_file(f"{self.saving_dir}external/zip_shape.zip", engine="pyogrio")
+        create_zips(self.engine)
+        create_muni(self.engine)
+
+        if not os.path.exists(f"{self.saving_dir}external/zip_shape.zip"):
+            self.pull_file(url="https://www2.census.gov/geo/tiger/TIGER2024/ZCTA520/tl_2024_us_zcta520.zip", filename=f"{self.saving_dir}external/zip_shape.zip")
+            self.debug_log("zip_shape.zip downloaded")
+        if not os.path.exists(f"{self.saving_dir}external/county.zip"):
+            self.pull_file(url="https://www2.census.gov/geo/tiger/TIGER2024/COUNTY/tl_2024_us_county.zip", filename=f"{self.saving_dir}external/county.zip")
+            self.debug_log("county.zip downloaded")
+        zips = gpd.read_file(f"{self.saving_dir}external/zip_shape.zip")
         zips = zips[zips["ZCTA5CE20"].str.startswith("00")]
 
-        gdf = gpd.read_file(f"{self.saving_dir}external/county.zip", engine="pyogrio")
+        gdf = gpd.read_file(f"{self.saving_dir}external/county.zip")
         gdf = gdf[gdf["STATEFP"].str.startswith("72")].rename(columns={"geometry":"count_geo"})
 
         master_df = gpd.GeoDataFrame(columns=["ZCTA5CE20", "GEOID"])
