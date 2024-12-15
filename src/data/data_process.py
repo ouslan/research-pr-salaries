@@ -43,7 +43,7 @@ class DataReg(cleanData):
         #     )
         df_qcew = df_qcew.rename(zipcode="phys_addr_5_zip")
 
-        return df_qcew#.join(df_dp03, predicates=["year", "qtr", "zipcode"], how="inner")
+        return df_qcew#.join(df_dp03, predicates=["year", "qtr", "zipcode"], how="left")
 
 
     def make_spatial_table(self):

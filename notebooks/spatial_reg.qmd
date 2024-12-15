@@ -30,7 +30,7 @@ ibis.options.interactive = True
 
 ```{python}
 d = DataReg()
-df = d.semipar_data().select(["year", "qtr", "naics_code", "zipcode", "ui_addr_5_zip", "total_employment", "total_wages", "latitude", "longitude"])
+df = d.semipar_data().select(["year", "qtr", "naics_code", "ein", "zipcode", "ui_addr_5_zip", "total_employment", "total_wages", "latitude", "longitude"])
 df = df.mutate(
     total_wages=df.total_wages.fill_null(0),
     total_employment=df.total_employment.fill_null(0)
@@ -44,9 +44,15 @@ df = df.mutate(
 )
 # df = df.filter(df.zipcode.startswith("00"))
 df = df.filter(df.longitude != 0)
-df
+# df = df.filter(~df.ui_addr_5_zip.startswith("00"))
+df = df.filter(df.year >= 2012)
+df = df.group_by(["year", "ein", "naics_code", "zipcode","latitude", "longitude"]).agg(
+    [
+        df.total_employment.mean().name("total_employment"),
+        df.wages_employee.mean().name("wages_employee")
+    ]
+)
 ```
-
 
 ```{python}
 zips_df = d.conn.table("zipstable").drop("id").distinct(on="zipcode", keep='first')
@@ -58,11 +64,11 @@ df = df.join(zips_df, "zipcode", how="inner")
 
 
 ```{python}
-mini = df.group_by(["year", "qtr", "naics_code", "geo_id"]).aggregate([
+mini = df.group_by(["year", "naics_code", "geo_id"]).aggregate([
     df.wages_employee.mean().name("mw_industry"),
     df.total_employment.sum().name("total_employment")
 ])
-df = df.join(mini, predicates=["year", "qtr", "naics_code", "geo_id"], how="inner")
+df = df.join(mini, predicates=["year", "naics_code", "geo_id"], how="inner")
 ```
 
 
@@ -86,17 +92,87 @@ df = df.mutate(
 
 ```{python}
 df = df.to_pandas()
-df = df[["year", "qtr", "date", "naics_code", "zipcode", "total_employment", "k_index", "latitude", "longitude"]]
+df = df[["year", "ein", "naics_code", "zipcode", "total_employment", "k_index", "latitude", "longitude"]]
 df = df[~df["k_index"].isnull()]
+df_dp = d.conn.table("dp03table").to_pandas()
+df = df.merge(df_dp, on=["year","zipcode"], how="left")
+df
 ```
 
 ```{python}
 gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs="EPSG:4326")
 county = gpd.read_file("data/external/county.zip")
 county = county[county["STATEFP"] == "72"]
-gdf = gdf[gdf["year"] == 2022]
+gdf = gdf[(gdf["year"] <= 2021) & (gdf["year"] >= 2012)]
 ```
 
 ```{python}
 gdf.sample(n=10000).explore(column="k_index", cmap="Reds", scheme="quantiles", k=10, tooltip=["naics_code", "k_index"], vmax=10, tiles="CartoDB Positron")
+```
+
+```{python}
+# Assuming gdf is your original dataframe
+ids = gdf['ein'].unique()  # Unique IDs
+times = gdf['year'].unique()  # Unique time points
+
+# Step 1: Drop duplicates if necessary (ensure each (ein, date) pair is unique)
+df_unique_first = gdf.drop_duplicates(subset=['ein', 'year'], keep='first')
+
+# Step 2: Create a MultiIndex with the full set of possible combinations of ein and date
+complete_index = pd.MultiIndex.from_product([ids, times], names=['ein', 'year'])
+
+# Step 3: Reindex the dataframe to ensure all possible combinations are covered
+df_balanced = df_unique_first.set_index(['ein', 'year']).reindex(complete_index)
+
+# Step 4: Remove rows with NaN values to get only complete time series
+df_balanced = df_balanced.dropna().reset_index()
+
+# Step 5: Filter out `ein` values that do not appear for all time periods
+# Count how many unique dates each `ein` has
+ein_counts = df_balanced.groupby('ein')['year'].nunique()
+
+# Only keep `ein` that have data for all time periods (4 time points)
+complete_eins = ein_counts[ein_counts == len(times)].index
+
+# Filter the dataframe to keep only those `ein` values that have complete data
+master_gdf = df_balanced[df_balanced['ein'].isin(complete_eins)]
+
+# Step 6: Sort the dataframe by date and ein
+master_gdf = master_gdf.sort_values(["year", "ein"]).reset_index(drop=True)
+master_gdf
+```
+
+```{python}
+tmp = master_gdf.sort_values(["year", "ein"])
+tmp = tmp[(tmp["year"] == 2021)]
+w = weights.KNN.from_dataframe(tmp, k=100)
+```
+
+```{python}
+indipendant_var = [ "median_household_income_dollars", "k_index",
+                    "unemployed", "mean_travel_time_to_work_minutes", "armed_forces", "food_security", "p_public_administration", "p_with_social_security",
+                    "p_agriculture_forestry_fishing_a", "p_professional_scientific_and_ma", "p_manufacturing", "p_construction", "p_snap", "p_information",
+                    "not_in_labor_force", "mean_cash_public_assistance_inco", "p_retirement"]
+indipendant_name = [s[:15] for s in indipendant_var]
+
+y_reshaped = master_gdf["total_employment"].values.reshape(-1, 1)
+x_reshaped = (master_gdf[indipendant_var]).values
+fe_lag = spreg.Panel_FE_Lag(
+    y=y_reshaped, 
+    x=x_reshaped, 
+    w=w, 
+    name_y=["employment"], 
+    name_x=indipendant_name, 
+    name_ds="NAT")
+print(fe_lag.summary)
+```
+
+
+```{python}
+print(fe_lag.summary)
+```
+
+
+```{python}
+master_gdf[indipendant_var + ["total_employment"]].describe()
 ```
