@@ -1,0 +1,102 @@
+---
+title: "Agriculture processing"
+format:
+  html:
+    code-fold: true
+jupyter: python3
+---
+
+```{python}
+import os
+os.chdir("..")
+```
+
+```{python}
+from src.data.data_process import DataReg
+from src.dao.zips_table import create_zips
+from src.dao.muni_table import create_muni
+from pysal.model import spreg
+from pysal.lib import weights
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import ibis
+import folium
+import mapclassify
+
+ibis.options.interactive = True
+```
+
+```{python}
+d = DataReg()
+df = d.semipar_data().select(["year", "qtr", "naics_code", "zipcode", "ui_addr_5_zip", "total_employment", "total_wages", "latitude", "longitude"])
+df = df.mutate(
+    total_wages=df.total_wages.fill_null(0),
+    total_employment=df.total_employment.fill_null(0)
+)
+df = df.mutate(
+    wages_employee=df.total_wages/df.total_employment,
+    date=df.year.cast("string") + "Q" + df.qtr.cast("string"),
+    )
+df = df.mutate(
+    wages_employee=df.wages_employee.fill_null(0)
+)
+# df = df.filter(df.zipcode.startswith("00"))
+df = df.filter(df.longitude != 0)
+df
+```
+
+
+```{python}
+zips_df = d.conn.table("zipstable").drop("id").distinct(on="zipcode", keep='first')
+muni_df = d.conn.table("munitable").drop("municipality").distinct(on="geo_id", keep='first').rename(muni_id="id")
+
+merge = zips_df.join(muni_df, "geo_id", how="inner").drop("geo_id")
+df = df.join(zips_df, "zipcode", how="inner")
+```
+
+
+```{python}
+mini = df.group_by(["year", "qtr", "naics_code", "geo_id"]).aggregate([
+    df.wages_employee.mean().name("mw_industry"),
+    df.total_employment.sum().name("total_employment")
+])
+df = df.join(mini, predicates=["year", "qtr", "naics_code", "geo_id"], how="inner")
+```
+
+
+```{python}
+df = df.mutate(
+    min_wage=ibis.case()
+        .when((df.year >= 2002) & (df.year < 2009), 5.15 * 65 * 8)
+        .when((df.year >= 2010) & (df.year < 2023), 7.25 * 65 * 8)
+        .when((df.year == 2023), 8.5 * 65 * 8)
+        .when((df.year == 2024), 10.5 * 65 * 8)
+        .else_(None)
+        .end(),
+)
+```
+
+```{python}
+df = df.mutate(
+    k_index=df.min_wage/df.mw_industry
+    )
+```
+
+```{python}
+df = df.to_pandas()
+df = df[["year", "qtr", "date", "naics_code", "zipcode", "total_employment", "k_index", "latitude", "longitude"]]
+df = df[~df["k_index"].isnull()]
+```
+
+```{python}
+gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs="EPSG:4326")
+county = gpd.read_file("data/external/county.zip")
+county = county[county["STATEFP"] == "72"]
+gdf = gdf[gdf["year"] == 2022]
+```
+
+```{python}
+gdf.sample(n=10000).explore(column="k_index", cmap="Reds", scheme="quantiles", k=10, tooltip=["naics_code", "k_index"], vmax=10, tiles="CartoDB Positron")
+```

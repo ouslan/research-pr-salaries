@@ -7,6 +7,11 @@ jupyter: python3
 ---
 
 ```{python}
+import os
+os.chdir("..")
+```
+
+```{python}
 from src.data.data_process import DataReg
 from src.dao.zips_table import create_zips
 from src.data.data_process import DataReg
@@ -47,5 +52,5 @@ df = zips[["ZCTA5CE20", "geometry"]].rename(columns={"ZCTA5CE20":"zipcode"}).res
 ```
 
 ```{python}
-conn.insert("zipstable", df)
+df[df["zipcode"] == "00936"]
 ```
