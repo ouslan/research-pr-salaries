@@ -13,8 +13,6 @@ os.chdir("..")
 
 ```{python}
 from src.data.data_process import DataReg
-from src.dao.zips_table import create_zips
-from src.dao.muni_table import create_muni
 from pysal.model import spreg
 from pysal.lib import weights
 import geopandas as gpd
@@ -42,16 +40,15 @@ df = df.mutate(
 df = df.mutate(
     wages_employee=df.wages_employee.fill_null(0)
 )
-# df = df.filter(df.zipcode.startswith("00"))
-df = df.filter(df.longitude != 0)
+df = df.filter(df.zipcode.startswith("00"))
 # df = df.filter(~df.ui_addr_5_zip.startswith("00"))
 df = df.filter(df.year >= 2012)
 df = df.group_by(["year", "ein", "naics_code", "zipcode","latitude", "longitude"]).agg(
-    [
-        df.total_employment.mean().name("total_employment"),
-        df.wages_employee.mean().name("wages_employee")
-    ]
-)
+     [
+         df.total_employment.mean().name("total_employment"),
+         df.wages_employee.mean().name("wages_employee")
+     ]
+ )
 ```
 
 ```{python}
