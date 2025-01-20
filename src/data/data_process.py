@@ -33,7 +33,7 @@ class DataReg(cleanData):
         df_qcew = df_qcew.filter(df_qcew.ein != "", df_qcew.phys_addr_5_zip!= "", df_qcew.year != "", df_qcew.qtr!= "")
         df_qcew = df_qcew.cast({
         "first_month_employment": "float64", "second_month_employment": "float64", "third_month_employment": "float64",
-        "year": "int32", "qtr": "int32", "total_wages": "float64"
+        "year": "int32", "qtr": "int32", "total_wages": "float64", "latitude":"float64", "longitude":"float64"
         })
         df_qcew = df_qcew.mutate(
          total_employment=(df_qcew.first_month_employment + df_qcew.second_month_employment + df_qcew.third_month_employment)/3
@@ -43,7 +43,7 @@ class DataReg(cleanData):
         #     )
         df_qcew = df_qcew.rename(zipcode="phys_addr_5_zip")
 
-        return df_qcew#.join(df_dp03, predicates=["year", "qtr", "zipcode"], how="inner")
+        return df_qcew#.join(df_dp03, predicates=["year", "qtr", "zipcode"], how="left")
 
 
     def make_spatial_table(self):
