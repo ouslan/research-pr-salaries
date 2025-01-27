@@ -2,6 +2,7 @@ from ..jp_qcew.src.data.data_process import cleanData
 from ..models import *
 import pandas as pd
 import geopandas as gpd
+import ibis
 import os
 
 
@@ -17,7 +18,11 @@ class DataReg(cleanData):
         if "qcewtable" not in self.conn.list_tables():
             self.make_qcew_dataset()
         df_qcew = self.conn.table("qcewtable")
+        gdf = self.conn.table("countytable")
 
+        df_qcew = df_qcew.filter(~df_qcew.geom.x().isnull())
+        df_qcew = df_qcew.filter(df_qcew.geom.x() != 0)
+        # TODO: ensure that there is no null inf or nan in the data
         df_qcew = df_qcew.mutate(
             total_employment=(
                 df_qcew.first_month_employment
@@ -26,12 +31,60 @@ class DataReg(cleanData):
             )
             / 3
         )
-        df_qcew = df_qcew.filter(~df_qcew.geom.x().isnull())
-        df_qcew = df_qcew.filter(df_qcew.geom.x() != 0)
 
-        return df_qcew.select(
-            "year", "naics_code", "total_employment", "total_wages", "geom"
+        df_qcew = df_qcew.mutate(
+            wages_employee=df_qcew.total_wages / df_qcew.total_employment,
+            naics2=df_qcew.naics_code.substr(0, 2),
         )
+        df_qcew = df_qcew.mutate(
+            wages_employee=ibis.case()
+            .when((df_qcew.wages_employee.isnan()), 0.0)
+            .else_(df_qcew.wages_employee)
+            .end()
+        )
+
+        df_qcew.select(
+            "id",
+            "year",
+            "qtr",
+            "naics2",
+            "total_employment",
+            "wages_employee",
+            "total_wages",
+            "geom",
+        )
+
+        for muni in range(1, gdf.id.max().execute() - 1):  # gdf.id.max().execute() - 1
+            try:
+                tmp = gdf.filter(gdf.id == muni).geom.as_scalar()
+                temp = df_qcew.filter(df_qcew.geom.within(tmp))
+                temp = temp.mutate(county_id=muni)
+                master_df = ibis.union(master_df, temp)
+            except NameError:
+                tmp = gdf.filter(gdf.id == muni).geom.as_scalar()
+                temp = df_qcew.filter(df_qcew.geom.within(tmp))
+                temp = temp.mutate(county_id=muni)
+                master_df = temp
+
+        df_qcew = master_df.group_by(["year", "qtr", "naics2", "county_id"]).aggregate(
+            [
+                master_df.wages_employee.mean().name("mw_industry"),
+                master_df.total_employment.sum().name("total_employment"),
+            ]
+        )
+
+        df_qcew = df_qcew.mutate(
+            min_wage=ibis.case()
+            .when((df_qcew.year >= 2002) & (df_qcew.year < 2009), 5.15 * 65 * 8)
+            .when((df_qcew.year >= 2010) & (df_qcew.year < 2023), 7.25 * 65 * 8)
+            .when((df_qcew.year == 2023), 8.5 * 65 * 8)
+            .when((df_qcew.year == 2024), 10.5 * 65 * 8)
+            .else_(None)
+            .end(),
+        )
+        df_qcew = df_qcew.mutate(k_index=df_qcew.min_wage / df_qcew.mw_industry)
+
+        return df_qcew
 
     def make_spatial_table(self):
         # pull shape files from the census

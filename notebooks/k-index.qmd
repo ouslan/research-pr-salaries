@@ -22,27 +22,64 @@ d = DataReg()
 ```
 
 ```{python}
-con = duckdb.connect("data.ddb")
-con.sql("DROP TABLE countytable;")
+d.semipar_data()
 ```
 
 ```{python}
-conn = ibis.duckdb.connect("data.ddb")
-d.conn.list_tables()
-# d.make_spatial_table()
-d.conn.table("countytable")
+df = d.semipar_data()
+gdf = d.conn.table("countytable")
+for muni in range(1, 10): #gdf.id.max().execute() - 1
+  try:
+    tmp = gdf.filter(gdf.id == muni).geom.as_scalar()
+    temp = df.filter(df.geom.within(tmp)) 
+    temp = temp.mutate(county_id=muni)
+    master_df = ibis.union(master_df, temp)
+  except NameError:
+    tmp = gdf.filter(gdf.id == muni).geom.as_scalar()
+    temp = df.filter(df.geom.within(tmp))
+    temp = temp.mutate(
+      county_id=muni)
+    master_df = temp
+master_df = master_df.mutate(
+    wages_employee=ibis.case()
+      .when((master_df.wages_employee.isnan()), 0.0)
+      .else_(master_df.wages_employee)
+      .end()
+)
+master_df
 ```
 
 ```{python}
-d.make_spatial_table()
+df_qcew = master_df.group_by(["year", "qtr", "naics2", "county_id"]).aggregate([
+    master_df.wages_employee.mean().name("mw_industry"),
+    master_df.total_employment.sum().name("total_employment"),
 
+])
+df_qcew = df_qcew.mutate(
+            min_wage=ibis.case()
+                .when((df_qcew.year >= 2002) & (df_qcew.year < 2009), 5.15 * 65 * 8)
+                .when((df_qcew.year >= 2010) & (df_qcew.year < 2023), 7.25 * 65 * 8)
+                .when((df_qcew.year == 2023), 8.5 * 65 * 8)
+                .when((df_qcew.year == 2024), 10.5 * 65 * 8)
+                .else_(None)
+                .end(),
+        )
+df_qcew
 ```
 
 ```{python}
-gdf = gpd.read_file("data/external/county.zip", engine="pyogrio")
-gdf = gdf[gdf["STATEFP"] == "72"]
-gdf = gdf[["GEOID", "NAME", "geometry"]].reset_index(drop=True)
-gdf = gdf.rename(columns={"GEOID":"geo_id", "NAME":"name", "geometry":"geom"})
-gdf["geom"] = gdf["geom"].apply(lambda x: x.wkt)
-d.conn.insert("countytable", gdf)
+temp = master_df.filter(master_df.year == 2007, master_df.qtr == 4, master_df.county_id == 2)
+temp.mutate(
+    wages_employee=temp.wages_employee.fill_nan(0))
+```
+
+```{python}
+df_qcew = df_qcew.mutate(
+    k_index=df_qcew.min_wage/df_qcew.mw_industry
+    )
+df_qcew
+```
+
+```{python}
+master_df
 ```
