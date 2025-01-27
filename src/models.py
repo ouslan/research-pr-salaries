@@ -1,5 +1,10 @@
 import duckdb
 
+
+def get_conn(db_path: str) -> duckdb.DuckDBPyConnection:
+    return duckdb.connect(db_path)
+
+
 con = duckdb.connect("data.ddb")
 
 con.sql(
