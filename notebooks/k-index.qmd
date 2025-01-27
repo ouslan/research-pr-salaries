@@ -13,27 +13,36 @@ os.chdir("..")
 
 ```{python}
 import pandas as pd
+import duckdb
 import ibis
 from src.data.data_process import DataReg
-
+import geopandas as gpd
 ibis.options.interactive = True
 d = DataReg()
 ```
 
 ```{python}
-df = d.conn.table("qcewtable")
-df = df.select(["year", "qtr", "naics_code", "latitude", "longitude", "first_month_employment", "second_month_employment", "third_month_employment", "total_wages"])
-df = df.filter(df.latitude != "")
-df = df.cast(
-            {
-                "first_month_employment": "float64",
-                "second_month_employment": "float64",
-                "third_month_employment": "float64",
-                "year": "int32",
-                "qtr": "int32",
-                "total_wages": "float64",
-                "latitude": "float64",
-                "longitude": "float64",
-            })
-df
+con = duckdb.connect("data.ddb")
+con.sql("DROP TABLE countytable;")
+```
+
+```{python}
+conn = ibis.duckdb.connect("data.ddb")
+d.conn.list_tables()
+# d.make_spatial_table()
+d.conn.table("countytable")
+```
+
+```{python}
+d.make_spatial_table()
+
+```
+
+```{python}
+gdf = gpd.read_file("data/external/county.zip", engine="pyogrio")
+gdf = gdf[gdf["STATEFP"] == "72"]
+gdf = gdf[["GEOID", "NAME", "geometry"]].reset_index(drop=True)
+gdf = gdf.rename(columns={"GEOID":"geo_id", "NAME":"name", "geometry":"geom"})
+gdf["geom"] = gdf["geom"].apply(lambda x: x.wkt)
+d.conn.insert("countytable", gdf)
 ```
