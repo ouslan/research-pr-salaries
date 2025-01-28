@@ -17,11 +17,19 @@ class DataReg(cleanData):
     def semipar_data(self):
         if "qcewtable" not in self.conn.list_tables():
             self.make_qcew_dataset()
+        if "countytable" not in self.conn.list_tables():
+            self.make_spatial_table()
         df_qcew = self.conn.table("qcewtable")
         gdf = self.conn.table("countytable")
 
         df_qcew = df_qcew.filter(~df_qcew.geom.x().isnull())
         df_qcew = df_qcew.filter(df_qcew.geom.x() != 0)
+        df_qcew = df_qcew.mutate(
+            first_month_employment=df_qcew.first_month_employment.fill_null(0),
+            second_month_employment=df_qcew.second_month_employment.fill_null(0),
+            third_month_employment=df_qcew.third_month_employment.fill_null(0),
+            total_wages=df_qcew.total_wages.fill_null(0),
+        )
         # TODO: ensure that there is no null inf or nan in the data
         df_qcew = df_qcew.mutate(
             total_employment=(
@@ -84,7 +92,7 @@ class DataReg(cleanData):
         )
         df_qcew = df_qcew.mutate(k_index=df_qcew.min_wage / df_qcew.mw_industry)
 
-        return df_qcew
+        return df_qcew.join(gdf, df_qcew.county_id == gdf.id)
 
     def make_spatial_table(self):
         # pull shape files from the census

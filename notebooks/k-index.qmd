@@ -26,9 +26,53 @@ d.semipar_data()
 ```
 
 ```{python}
-df = d.semipar_data()
+df_qcew = d.conn.table("qcewtable")
+df_qcew = df_qcew.filter(~df_qcew.geom.x().isnull())
+df_qcew = df_qcew.filter(df_qcew.geom.x() != 0)
+df_qcew = df_qcew.mutate(
+    first_month_employment=df_qcew.first_month_employment.fill_null(0),
+    second_month_employment=df_qcew.second_month_employment.fill_null(0),
+    third_month_employment=df_qcew.third_month_employment.fill_null(0),
+    total_wages=df_qcew.total_wages.fill_null(0),
+)
+# TODO: ensure that there is no null inf or nan in the data
+df_qcew = df_qcew.mutate(
+    total_employment=(
+        df_qcew.first_month_employment
+        + df_qcew.second_month_employment
+        + df_qcew.third_month_employment
+    )
+    / 3
+)
+
+df_qcew = df_qcew.mutate(
+    wages_employee=df_qcew.total_wages / df_qcew.total_employment,
+    naics2=df_qcew.naics_code.substr(0, 2),
+)
+df_qcew = df_qcew.mutate(
+    wages_employee=ibis.case()
+    .when((df_qcew.wages_employee.isnan()), 0.0)
+    .else_(df_qcew.wages_employee)
+    .end()
+)
+
+df_qcew = df_qcew.select(
+    "id",
+    "year",
+    "qtr",
+    "naics2",
+    "total_employment",
+    "wages_employee",
+    "total_wages",
+    "geom",
+)
+df_qcew
+```
+
+```{python}
+df = df_qcew
 gdf = d.conn.table("countytable")
-for muni in range(1, 10): #gdf.id.max().execute() - 1
+for muni in range(1, 5): #gdf.id.max().execute() - 1
   try:
     tmp = gdf.filter(gdf.id == muni).geom.as_scalar()
     temp = df.filter(df.geom.within(tmp)) 
@@ -68,12 +112,6 @@ df_qcew
 ```
 
 ```{python}
-temp = master_df.filter(master_df.year == 2007, master_df.qtr == 4, master_df.county_id == 2)
-temp.mutate(
-    wages_employee=temp.wages_employee.fill_nan(0))
-```
-
-```{python}
 df_qcew = df_qcew.mutate(
     k_index=df_qcew.min_wage/df_qcew.mw_industry
     )
@@ -81,5 +119,5 @@ df_qcew
 ```
 
 ```{python}
-master_df
+df_qcew.join(gdf, df_qcew.county_id == gdf.id)
 ```
