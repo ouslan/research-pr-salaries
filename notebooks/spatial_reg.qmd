@@ -12,111 +12,32 @@ os.chdir("..")
 ```
 
 ```{python}
-import pandas as pd
-import duckdb
-import ibis
-from src.data.data_process import DataReg
+from pysal.lib import weights
 import geopandas as gpd
-ibis.options.interactive = True
-d = DataReg()
 ```
 
 ```{python}
-d.semipar_data()
+d.semipar_data().to_parquet("data/external/test.parquet")
 ```
 
 ```{python}
-zips_df = d.conn.table("zipstable").drop("id").distinct(on="zipcode", keep='first')
-muni_df = d.conn.table("munitable").drop("municipality").distinct(on="geo_id", keep='first').rename(muni_id="id")
-
-merge = zips_df.join(muni_df, "geo_id", how="inner").drop("geo_id")
-df = df.join(zips_df, "zipcode", how="inner")
+gdf = gpd.read_parquet("data/external/test.parquet")
 ```
 
-
 ```{python}
-mini = df.group_by(["year", "naics_code", "geo_id"]).aggregate([
-    df.wages_employee.mean().name("mw_industry"),
-    df.total_employment.sum().name("total_employment")
-])
-df = df.join(mini, predicates=["year", "naics_code", "geo_id"], how="inner")
+tmp = gdf[gdf["k_index"] < 2]
+tmp = tmp[["geom", "k_index", "name", "naics2", "year"]].reset_index(drop=True)
+tmp = tmp[(tmp["naics2"].isin(["52"]))]
+tmp["centroid"] = tmp.centroid
+tmp
 ```
 
-
 ```{python}
-df = df.mutate(
-    min_wage=ibis.case()
-        .when((df.year >= 2002) & (df.year < 2009), 5.15 * 65 * 8)
-        .when((df.year >= 2010) & (df.year < 2023), 7.25 * 65 * 8)
-        .when((df.year == 2023), 8.5 * 65 * 8)
-        .when((df.year == 2024), 10.5 * 65 * 8)
-        .else_(None)
-        .end(),
+tmp = tmp.sort_values(["year"])
+tmp = tmp[(tmp["year"] == 2023)]
+w = weights.distance.DistanceBand.from_dataframe(
+    tmp, 80467, binary=True
 )
-```
-
-```{python}
-df = df.mutate(
-    k_index=df.min_wage/df.mw_industry
-    )
-```
-
-```{python}
-df = df.to_pandas()
-df = df[["year", "ein", "naics_code", "zipcode", "total_employment", "k_index", "latitude", "longitude"]]
-df = df[~df["k_index"].isnull()]
-df_dp = d.conn.table("dp03table").to_pandas()
-df = df.merge(df_dp, on=["year","zipcode"], how="left")
-df
-```
-
-```{python}
-gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs="EPSG:4326")
-county = gpd.read_file("data/external/county.zip")
-county = county[county["STATEFP"] == "72"]
-gdf = gdf[(gdf["year"] <= 2021) & (gdf["year"] >= 2012)]
-```
-
-```{python}
-gdf.sample(n=10000).explore(column="k_index", cmap="Reds", scheme="quantiles", k=10, tooltip=["naics_code", "k_index"], vmax=10, tiles="CartoDB Positron")
-```
-
-```{python}
-# Assuming gdf is your original dataframe
-ids = gdf['ein'].unique()  # Unique IDs
-times = gdf['year'].unique()  # Unique time points
-
-# Step 1: Drop duplicates if necessary (ensure each (ein, date) pair is unique)
-df_unique_first = gdf.drop_duplicates(subset=['ein', 'year'], keep='first')
-
-# Step 2: Create a MultiIndex with the full set of possible combinations of ein and date
-complete_index = pd.MultiIndex.from_product([ids, times], names=['ein', 'year'])
-
-# Step 3: Reindex the dataframe to ensure all possible combinations are covered
-df_balanced = df_unique_first.set_index(['ein', 'year']).reindex(complete_index)
-
-# Step 4: Remove rows with NaN values to get only complete time series
-df_balanced = df_balanced.dropna().reset_index()
-
-# Step 5: Filter out `ein` values that do not appear for all time periods
-# Count how many unique dates each `ein` has
-ein_counts = df_balanced.groupby('ein')['year'].nunique()
-
-# Only keep `ein` that have data for all time periods (4 time points)
-complete_eins = ein_counts[ein_counts == len(times)].index
-
-# Filter the dataframe to keep only those `ein` values that have complete data
-master_gdf = df_balanced[df_balanced['ein'].isin(complete_eins)]
-
-# Step 6: Sort the dataframe by date and ein
-master_gdf = master_gdf.sort_values(["year", "ein"]).reset_index(drop=True)
-master_gdf
-```
-
-```{python}
-tmp = master_gdf.sort_values(["year", "ein"])
-tmp = tmp[(tmp["year"] == 2021)]
-w = weights.KNN.from_dataframe(tmp, k=100)
 ```
 
 ```{python}

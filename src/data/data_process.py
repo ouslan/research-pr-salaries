@@ -74,7 +74,7 @@ class DataReg(cleanData):
                 temp = temp.mutate(county_id=muni)
                 master_df = temp
 
-        df_qcew = master_df.group_by(["year", "qtr", "naics2", "county_id"]).aggregate(
+        df_qcew = master_df.group_by(["year", "naics2", "county_id"]).aggregate(
             [
                 master_df.wages_employee.mean().name("mw_industry"),
                 master_df.total_employment.sum().name("total_employment"),

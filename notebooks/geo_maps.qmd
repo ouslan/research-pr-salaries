@@ -1,0 +1,71 @@
+---
+title: "Agriculture processing"
+format:
+  html:
+    code-fold: true
+jupyter: python3
+---
+
+```{python}
+import os
+os.chdir("..")
+```
+
+```{python}
+import ibis
+import altair as alt
+from src.data.data_process import DataReg
+import geopandas as gpd
+ibis.options.interactive = True
+d = DataReg()
+```
+
+```{python}
+d.semipar_data().to_parquet("data/external/test.parquet")
+```
+
+```{python}
+gdf = gpd.read_parquet("data/external/test.parquet")
+```
+
+```{python}
+tmp = gdf[(gdf["year"] == 2023) & (gdf["k_index"] < 2)]
+tmp = tmp[["geom", "k_index", "name", "naics2"]].reset_index(drop=True)
+tmp = tmp[(tmp["naics2"].isin(["52", "62"]))]
+tmp
+```
+
+
+```{python}
+alt.Chart(tmp).mark_geoshape().encode(
+    color=alt.Color("k_index:Q").scale(scheme='magma')
+).transform_lookup(
+    lookup='name',
+    from_=alt.LookupData(tmp, 'name', ['k_index'])
+).project(
+    type='mercator'
+).properties(
+    width=500,
+    height=300
+).save('chart.json')
+```
+
+
+```{python}
+chart = alt.Chart(tmp).mark_geoshape().encode(
+    shape='geo:G',
+    color=alt.Color("k_index:Q", scale=alt.Scale(scheme='magma', domain=[0, 1])),
+    tooltip=['name:N', 'k_index:Q'],
+    facet=alt.Facet('naics2:Q', columns=2),
+).transform_lookup(
+    lookup='name',
+    from_=alt.LookupData(data=tmp, key="name"),
+    as_='geo'
+).project(
+    type='mercator'
+).properties(
+    width=300,
+    height=175,
+)
+chart.save('chart.png', ppi=200)
+```
