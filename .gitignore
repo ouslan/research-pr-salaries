@@ -173,3 +173,5 @@ data/external/
 # Data files
 *.dta
 *.sqlite
+*.ddb
+*.wal
