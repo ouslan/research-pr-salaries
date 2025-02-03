@@ -13,15 +13,10 @@ os.chdir("..")
 
 ```{python}
 from src.data.data_process import DataReg
-from src.dao.zips_table import create_zips
-from src.data.data_process import DataReg
-from sqlmodel import create_engine
+import ibis 
 import geopandas as gpd
-import pandas as pd
-from sqlmodel import SQLModel
-import ibis
-from shapely.geometry import MultiPolygon, Polygon
-import sqlite3
+
+dr = DataReg()
 
 ibis.options.interactive = True
 ```

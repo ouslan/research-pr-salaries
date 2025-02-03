@@ -1,6 +1,6 @@
 from ..jp_qcew.src.data.data_process import cleanData
-from ..models import *
-import pandas as pd
+from ..models import init_countytable, init_coutsubtable, init_zipstable
+import logging
 import geopandas as gpd
 import ibis
 import os
@@ -61,7 +61,7 @@ class DataReg(cleanData):
             "total_wages",
             "geom",
         )
-
+        # NOTE: I could define the first module to prevent master_df to be unbounded
         for muni in range(1, gdf.id.max().execute() - 1):  # gdf.id.max().execute() - 1
             try:
                 tmp = gdf.filter(gdf.id == muni).geom.as_scalar()
@@ -101,12 +101,16 @@ class DataReg(cleanData):
                 url="https://www2.census.gov/geo/tiger/TIGER2024/COUNTY/tl_2024_us_county.zip",
                 filename=f"{self.saving_dir}external/county.zip",
             )
-        if not os.path.exists(f"{self.saving_dir}external/countsub.shp"):
+            logging.info("Downloaded county shape file")
+        if not os.path.exists(f"{self.saving_dir}external/countsub.zip"):
             self.pull_file(
                 url="https://www2.census.gov/geo/tiger/TIGER2024/COUSUB/tl_2024_72_cousub.zip",
                 filename=f"{self.saving_dir}external/countsub.zip",
             )
-
+            logging.info("Downloaded sub county shape file")
+        if not os.path.exists(f"{self.saving_dir}external/zips.zip"):
+            self.pull_file(url="https://www2.census.gov/geo/tiger/TIGER2024/ZCTA520/tl_2024_us_zcta520.zip", filename=f"{self.saving_dir}external/zips.zip")
+            logging.info("Downloaded zipcode shape files")
         # initiiate the database tables
         if "countytable" not in self.conn.list_tables():
             init_countytable(self.data_file)
@@ -120,3 +124,6 @@ class DataReg(cleanData):
             self.conn.insert("countytable", gdf)
         if "countsubtable" not in self.conn.list_tables():
             init_coutsubtable(self.data_file)
+        
+        if "zipstable" not in self.conn.list_tables():
+            init_zipstable(self.data_file)

@@ -1,4 +1,5 @@
 import duckdb
+from ibis import connect
 
 
 def get_conn(db_path: str) -> duckdb.DuckDBPyConnection:
@@ -162,12 +163,30 @@ def init_countytable(ddb_path: str) -> None:
 def init_coutsubtable(ddb_path: str) -> None:
     conn = get_conn(ddb_path)
     conn.load_extension("spatial")
-    conn.sql("DROP SEQUENCE IF EXISTS countsubtable_id_seq;")
-    conn.sql("CREATE SEQUENCE countsubtable_id_seq START WITH 1;")
+    conn.sql("DROP SEQUENCE IF EXISTS countsub_id_seq;")
+    conn.sql("CREATE SEQUENCE countsub_id_seq START WITH 1;")
     conn.sql(
         """
         CREATE TABLE IF NOT EXISTS "countsubtable" (
-            id INTEGER PRIMARY KEY DEFAULT nextval('countsubtable_id_seq'),
+            id INTEGER PRIMARY KEY DEFAULT nextval('countsub_id_seq'),
+            name VARCHAR(255) NOT NULL,
+            geo_id VARCHAR(25) NOT NULL,
+            geom geometry
+        );
+    """
+    )
+
+def init_zipstable(ddb_path: str) -> None:
+    conn = get_conn(ddb_path)
+    conn.load_extension("spatial")
+    conn.sql("DROP SEQUENCE IF EXISTS zips_id_seq;")
+    conn.sql("CREATE SEQUENCE zips_id_seq START WITH 1;")
+    conn.sql(
+        """
+        CREATE TABLE IF NOT EXISTS "zipstable" (
+            id INTEGER PRIMARY KEY DEFAULT nextval('zips_id_seq'),
+            county_id INTEGER,
+            FOREIGN KEY (county_id) REFERENCES countytable (id),
             name VARCHAR(255) NOT NULL,
             geo_id VARCHAR(25) NOT NULL,
             geom geometry
