@@ -12,112 +12,106 @@ os.chdir("..")
 ```
 
 ```{python}
-import pandas as pd
 import duckdb
+import polars as pl
+import geopandas as gpd
+import altair as alt
 import ibis
 from src.data.data_process import DataReg
-import geopandas as gpd
 ibis.options.interactive = True
-d = DataReg()
+dr = DataReg()
 ```
 
 ```{python}
-d.semipar_data()
+conn = duckdb.connect("data.ddb")
+init_df = conn.sql("SELECT year,qtr,phys_addr_5_zip,first_month_employment,total_wages,second_month_employment,third_month_employment,naics_code FROM qcewtable").pl()
 ```
 
 ```{python}
-df_qcew = d.conn.table("qcewtable")
-df_qcew = df_qcew.filter(~df_qcew.geom.x().isnull())
-df_qcew = df_qcew.filter(df_qcew.geom.x() != 0)
-df_qcew = df_qcew.mutate(
-    first_month_employment=df_qcew.first_month_employment.fill_null(0),
-    second_month_employment=df_qcew.second_month_employment.fill_null(0),
-    third_month_employment=df_qcew.third_month_employment.fill_null(0),
-    total_wages=df_qcew.total_wages.fill_null(0),
-)
-# TODO: ensure that there is no null inf or nan in the data
-df_qcew = df_qcew.mutate(
-    total_employment=(
-        df_qcew.first_month_employment
-        + df_qcew.second_month_employment
-        + df_qcew.third_month_employment
+df_qcew = init_df
+df_qcew = df_qcew.rename({"phys_addr_5_zip":"zipcode"})
+df_qcew = df_qcew.filter((pl.col("zipcode") != "") & (pl.col("naics_code") != ""))
+
+df_qcew = df_qcew.with_columns(
+    first_month_employment=pl.col("first_month_employment").fill_null(strategy="zero"),
+    second_month_employment=pl.col("second_month_employment").fill_null(strategy="zero"),
+    third_month_employment=pl.col("third_month_employment").fill_null(strategy="zero"),
+    total_wages= pl.col("total_wages").fill_null(strategy="zero")
     )
-    / 3
-)
-
-df_qcew = df_qcew.mutate(
-    wages_employee=df_qcew.total_wages / df_qcew.total_employment,
-    naics2=df_qcew.naics_code.substr(0, 2),
-)
-df_qcew = df_qcew.mutate(
-    wages_employee=ibis.case()
-    .when((df_qcew.wages_employee.isnan()), 0.0)
-    .else_(df_qcew.wages_employee)
-    .end()
-)
-
-df_qcew = df_qcew.select(
-    "id",
-    "year",
-    "qtr",
-    "naics2",
-    "total_employment",
-    "wages_employee",
-    "total_wages",
-    "geom",
-)
-df_qcew
-```
-
-```{python}
-df = df_qcew
-gdf = d.conn.table("countytable")
-for muni in range(1, 5): #gdf.id.max().execute() - 1
-  try:
-    tmp = gdf.filter(gdf.id == muni).geom.as_scalar()
-    temp = df.filter(df.geom.within(tmp)) 
-    temp = temp.mutate(county_id=muni)
-    master_df = ibis.union(master_df, temp)
-  except NameError:
-    tmp = gdf.filter(gdf.id == muni).geom.as_scalar()
-    temp = df.filter(df.geom.within(tmp))
-    temp = temp.mutate(
-      county_id=muni)
-    master_df = temp
-master_df = master_df.mutate(
-    wages_employee=ibis.case()
-      .when((master_df.wages_employee.isnan()), 0.0)
-      .else_(master_df.wages_employee)
-      .end()
-)
-master_df
-```
-
-```{python}
-df_qcew = master_df.group_by(["year", "qtr", "naics2", "county_id"]).aggregate([
-    master_df.wages_employee.mean().name("mw_industry"),
-    master_df.total_employment.sum().name("total_employment"),
-
-])
-df_qcew = df_qcew.mutate(
-            min_wage=ibis.case()
-                .when((df_qcew.year >= 2002) & (df_qcew.year < 2009), 5.15 * 65 * 8)
-                .when((df_qcew.year >= 2010) & (df_qcew.year < 2023), 7.25 * 65 * 8)
-                .when((df_qcew.year == 2023), 8.5 * 65 * 8)
-                .when((df_qcew.year == 2024), 10.5 * 65 * 8)
-                .else_(None)
-                .end(),
+df_qcew = df_qcew.with_columns(
+            total_employment=(
+                pl.col("first_month_employment") 
+                + pl.col("second_month_employment")
+                + pl.col("third_month_employment")
+            ) / 3
         )
-df_qcew
-```
-
-```{python}
-df_qcew = df_qcew.mutate(
-    k_index=df_qcew.min_wage/df_qcew.mw_industry
+df_qcew = df_qcew.filter((pl.col("total_employment") != 0) & (pl.col("total_wages") != 0) )
+df_qcew = df_qcew.with_columns(
+    wages_employee=pl.col("total_wages") / pl.col("total_employment"),
+    sector=pl.col("naics_code").str.slice(0,2)
+)
+df_qcew = df_qcew.group_by(["year","qtr","sector","zipcode"]).agg(
+    mw_industry=pl.col("wages_employee").mean(),
+    total_employment=pl.col("total_employment").sum()
+)
+df_qcew = df_qcew.with_columns(
+        min_wage=pl.when((pl.col("year") >= 2002) & (pl.col("year") < 2010)).then(5.15 * 65 * 8)
+        .when((pl.col("year") >= 2010) & (pl.col("year") < 2023)).then(7.25 * 65 * 8)
+        .when(pl.col("year") == 2023).then(8.5 * 65 * 8)
+        .when(pl.col("year") == 2024).then(10.5 * 65 * 8)
+        .otherwise(-1)
     )
+df_qcew = df_qcew.with_columns(k_index=pl.col("min_wage") / pl.col("mw_industry"))
 df_qcew
 ```
 
 ```{python}
-df_qcew.join(gdf, df_qcew.county_id == gdf.id)
+gdf = gpd.read_file("data/external/zip_shape.zip")
+gdf = gdf[gdf["ZCTA5CE20"].str.startswith("00")].rename(columns={"ZCTA5CE20":"zipcode"}).reset_index()
+```
+
+```{python}
+gdf = gdf[["zipcode","geometry"]]
+gdf["zipcode"] = gdf["zipcode"].str.strip()
+```
+
+
+```{python}
+tmp = df_qcew.to_pandas()
+master_df = tmp.join(gdf.set_index("zipcode"), on="zipcode", how="inner", validate="m:1").reset_index()
+master_df = gpd.GeoDataFrame(data=master_df, geometry=master_df["geometry"])
+tmp = master_df[(master_df["year"] == 2024) & ((master_df["qtr"] == 1))]
+```
+
+```{python}
+alt.Chart(tmp).mark_geoshape().encode(
+    color=alt.Color("k_index:Q").scale(scheme='viridis')
+).transform_lookup(
+    lookup='zipcode',
+    from_=alt.LookupData(tmp, 'zipcode', ['k_index'])
+).project(
+    type='mercator'
+).properties(
+    width="container",
+)
+# tmp.plot("k_index")
+```
+
+```{python}
+chart = alt.Chart(tmp).mark_geoshape().encode(
+    shape='geo:G',
+    color=alt.Color("k_index:Q", scale=alt.Scale(scheme='viridis', domain=[0, 1])),
+    tooltip=['zipcode:N', 'k_index:Q'],
+    facet=alt.Facet('sector:Q', columns=2),
+).transform_lookup(
+    lookup='zipcode',
+    from_=alt.LookupData(data=tmp, key="zipcode"),
+    as_='geo'
+).project(
+    type='mercator'
+).properties(
+    width=300,
+    height=175,
+)
+chart.save('chart.png', ppi=200)
 ```

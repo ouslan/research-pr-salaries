@@ -20,7 +20,7 @@ class DataReg(cleanData):
         if "countytable" not in self.conn.list_tables():
             self.make_spatial_table()
         df_qcew = self.conn.table("qcewtable")
-        gdf = self.conn.table("countytable")
+        # gdf = self.conn.table("countytable")
 
         df_qcew = df_qcew.filter(~df_qcew.geom.x().isnull())
         df_qcew = df_qcew.filter(df_qcew.geom.x() != 0)
@@ -51,48 +51,49 @@ class DataReg(cleanData):
             .end()
         )
 
-        df_qcew.select(
+        df_qcew = df_qcew.select(
             "id",
             "year",
             "qtr",
             "naics2",
+            "phys_addr_5_zip",
             "total_employment",
             "wages_employee",
             "total_wages",
             "geom",
         )
         # NOTE: I could define the first module to prevent master_df to be unbounded
-        for muni in range(1, gdf.id.max().execute() - 1):  # gdf.id.max().execute() - 1
-            try:
-                tmp = gdf.filter(gdf.id == muni).geom.as_scalar()
-                temp = df_qcew.filter(df_qcew.geom.within(tmp))
-                temp = temp.mutate(county_id=muni)
-                master_df = ibis.union(master_df, temp)
-            except NameError:
-                tmp = gdf.filter(gdf.id == muni).geom.as_scalar()
-                temp = df_qcew.filter(df_qcew.geom.within(tmp))
-                temp = temp.mutate(county_id=muni)
-                master_df = temp
+        # for muni in range(1, gdf.id.max().execute() - 1):  # gdf.id.max().execute() - 1
+        #     try:
+        #         tmp = gdf.filter(gdf.id == muni).geom.as_scalar()
+        #         temp = df_qcew.filter(df_qcew.geom.within(tmp))
+        #         temp = temp.mutate(county_id=muni)
+        #         master_df = ibis.union(master_df, temp)
+        #     except NameError:
+        #         tmp = gdf.filter(gdf.id == muni).geom.as_scalar()
+        #         temp = df_qcew.filter(df_qcew.geom.within(tmp))
+        #         temp = temp.mutate(county_id=muni)
+        #         master_df = temp
 
-        df_qcew = master_df.group_by(["year", "naics2", "county_id"]).aggregate(
-            [
-                master_df.wages_employee.mean().name("mw_industry"),
-                master_df.total_employment.sum().name("total_employment"),
-            ]
-        )
+        # df_qcew = df_qcew.group_by(["year", "naics2", "phys_addr_5_zip"]).aggregate(
+        #     [
+        #         df_qcew.wages_employee.mean().name("mw_industry"),
+        #         df_qcew.total_employment.sum().name("total_employment"),
+        #     ]
+        # )
 
-        df_qcew = df_qcew.mutate(
-            min_wage=ibis.case()
-            .when((df_qcew.year >= 2002) & (df_qcew.year < 2009), 5.15 * 65 * 8)
-            .when((df_qcew.year >= 2010) & (df_qcew.year < 2023), 7.25 * 65 * 8)
-            .when((df_qcew.year == 2023), 8.5 * 65 * 8)
-            .when((df_qcew.year == 2024), 10.5 * 65 * 8)
-            .else_(None)
-            .end(),
-        )
-        df_qcew = df_qcew.mutate(k_index=df_qcew.min_wage / df_qcew.mw_industry)
+        # df_qcew = df_qcew.mutate(
+        #     min_wage=ibis.case()
+        #     .when((df_qcew.year >= 2002) & (df_qcew.year < 2009), 5.15 * 65 * 8)
+        #     .when((df_qcew.year >= 2010) & (df_qcew.year < 2023), 7.25 * 65 * 8)
+        #     .when((df_qcew.year == 2023), 8.5 * 65 * 8)
+        #     .when((df_qcew.year == 2024), 10.5 * 65 * 8)
+        #     .else_(None)
+        #     .end(),
+        # )
+        # df_qcew = df_qcew.mutate(k_index=df_qcew.min_wage / df_qcew.mw_industry)
 
-        return df_qcew.join(gdf, df_qcew.county_id == gdf.id)
+        return df_qcew # df_qcew.join(gdf, df_qcew.county_id == gdf.id)
 
     def make_spatial_table(self):
         # pull shape files from the census

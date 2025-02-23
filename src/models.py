@@ -1,5 +1,4 @@
 import duckdb
-from ibis import connect
 
 
 def get_conn(db_path: str) -> duckdb.DuckDBPyConnection:
