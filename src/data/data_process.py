@@ -108,8 +108,11 @@ class DataReg(cleanData):
                 filename=f"{self.saving_dir}external/countsub.zip",
             )
             logging.info("Downloaded sub county shape file")
-        if not os.path.exists(f"{self.saving_dir}external/zips.zip"):
-            self.pull_file(url="https://www2.census.gov/geo/tiger/TIGER2024/ZCTA520/tl_2024_us_zcta520.zip", filename=f"{self.saving_dir}external/zips.zip")
+        if not os.path.exists(f"{self.saving_dir}external/zips_shape.zip"):
+            self.pull_file(
+                url="https://www2.census.gov/geo/tiger/TIGER2024/ZCTA520/tl_2024_us_zcta520.zip",
+                filename=f"{self.saving_dir}external/zips_shape.zip",
+            )
             logging.info("Downloaded zipcode shape files")
         # initiiate the database tables
         if "countytable" not in self.conn.list_tables():
@@ -124,6 +127,5 @@ class DataReg(cleanData):
             self.conn.insert("countytable", gdf)
         if "countsubtable" not in self.conn.list_tables():
             init_coutsubtable(self.data_file)
-        
         if "zipstable" not in self.conn.list_tables():
             init_zipstable(self.data_file)
