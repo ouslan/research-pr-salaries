@@ -17,6 +17,9 @@ import polars as pl
 import geopandas as gpd
 import altair as alt
 import ibis
+import libpysal
+from pysal.lib import weights
+import spreg
 from src.data.data_process import DataReg
 ibis.options.interactive = True
 dr = DataReg()
@@ -50,7 +53,7 @@ df_qcew = df_qcew.with_columns(
     wages_employee=pl.col("total_wages") / pl.col("total_employment"),
     sector=pl.col("naics_code").str.slice(0,2)
 )
-df_qcew = df_qcew.group_by(["year","qtr","sector","zipcode"]).agg(
+df_qcew = df_qcew.group_by(["year","sector","zipcode"]).agg(
     mw_industry=pl.col("wages_employee").mean(),
     total_employment=pl.col("total_employment").sum()
 )
@@ -80,7 +83,7 @@ gdf["zipcode"] = gdf["zipcode"].str.strip()
 tmp = df_qcew.to_pandas()
 master_df = tmp.join(gdf.set_index("zipcode"), on="zipcode", how="inner", validate="m:1").reset_index()
 master_df = gpd.GeoDataFrame(data=master_df, geometry=master_df["geometry"])
-tmp = master_df[(master_df["year"] == 2024) & ((master_df["qtr"] == 1))]
+tmp = master_df[(master_df["year"] == 2024)]
 ```
 
 ```{python}
@@ -102,16 +105,65 @@ chart = alt.Chart(tmp).mark_geoshape().encode(
     shape='geo:G',
     color=alt.Color("k_index:Q", scale=alt.Scale(scheme='viridis', domain=[0, 1])),
     tooltip=['zipcode:N', 'k_index:Q'],
-    facet=alt.Facet('sector:Q', columns=2),
+    facet=alt.Facet('sector:Q', columns=5),
 ).transform_lookup(
     lookup='zipcode',
     from_=alt.LookupData(data=tmp, key="zipcode"),
     as_='geo'
 ).project(
     type='mercator'
-).properties(
-    width=300,
-    height=175,
 )
-chart.save('chart.png', ppi=200)
+chart.save('chart_year.png', ppi=200)
+```
+
+
+```{python}
+tmp.pivot(index="zipcode", columns="sector", values="k_index")
+```
+
+
+```{python}
+gdf = master_df[(master_df["sector"] == "31")]
+gdf = gdf.set_crs('EPSG:4326', allow_override=True)
+gdf = gdf.to_crs(epsg=32619)
+gdf["centroid"] = gdf.centroid
+# gdf = gdf.drop(columns=["geometry"])
+# gdf = gpd.GeoDataFrame(data=gdf, geometry=gdf["centroid"])
+gdf = gdf.sort_values(by=["year", "zipcode"]).reset_index(drop=True)
+
+# Count the unique year-month combinations for each zipcode
+common_zipcodes = gdf.groupby('zipcode')['year'].nunique()
+
+# Find zip codes that appear in all year-month combinations
+num_year_month_combinations = len(gdf['year'].drop_duplicates())  # Total distinct year-month combinations
+common_zipcodes = common_zipcodes[common_zipcodes == num_year_month_combinations].index
+
+# Filter the original DataFrame to show only those zip codes common across all year-month combinations
+df_filtered = gdf[gdf['zipcode'].isin(common_zipcodes)]
+df_filtered.plot()
+```
+
+```{python}
+w = weights.distance.DistanceBand.from_dataframe(
+    df_filtered[(df_filtered["year"] == 2024)], 80467
+)
+```
+
+```{python}
+x = df_filtered["k_index"].values.reshape(-1,1)
+y = df_filtered["total_employment"].values.reshape(-1,1)
+fe_lag = spreg.Panel_FE_Lag(
+    y=y, 
+    x=y, 
+    w=w, 
+    name_y=["employment"], 
+    name_x=["k_index"]
+)
+print(fe_lag.summary)
+# gdf[(gdf["year"] == 2021) & ((gdf["qtr"] == 1))].count()
+# weight_df["zipcode"].unique().tolist()
+```
+
+```{python}
+
 ```
