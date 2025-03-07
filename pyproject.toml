@@ -14,6 +14,8 @@ dependencies = [
   "polars>=1.16.0",
   "tqdm>=4.67.1",
   "pysal>=24.7",
+  "contextily>=1.6.2",
+  "rioxarray>=0.18.2",
 ]
 
 [dependency-groups]

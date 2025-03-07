@@ -55,7 +55,7 @@ df_qcew = df_qcew.with_columns(
 )
 df_qcew = df_qcew.group_by(["year","sector","zipcode"]).agg(
     mw_industry=pl.col("wages_employee").mean(),
-    total_employment=pl.col("total_employment").sum()
+    total_employment=pl.col("total_employment").mean()
 )
 df_qcew = df_qcew.with_columns(
         min_wage=pl.when((pl.col("year") >= 2002) & (pl.col("year") < 2010)).then(5.15 * 65 * 8)
@@ -164,6 +164,3 @@ print(fe_lag.summary)
 # weight_df["zipcode"].unique().tolist()
 ```
 
-```{python}
-
-```
