@@ -16,12 +16,25 @@ import duckdb
 import polars as pl
 import geopandas as gpd
 import altair as alt
-import ibis
+import statsmodels.api as sm
+import arviz as az
+import bambi as bmb
+import numpy as np
+import pandas as pd
+import warnings
+import matplotlib.pyplot as plt
+import pymc as pm
+import xarray as xr
+
+plt.style.use(
+    "https://github.com/aeturrell/coding-for-economists/raw/main/plot_style.txt"
+) 
+az.style.use("arviz-darkgrid")
+
 import libpysal
 from pysal.lib import weights
 import spreg
 from src.data.data_process import DataReg
-ibis.options.interactive = True
 dr = DataReg()
 ```
 
@@ -164,3 +177,45 @@ print(fe_lag.summary)
 # weight_df["zipcode"].unique().tolist()
 ```
 
+```{python}
+w = weights.distance.DistanceBand.from_dataframe(
+    df_filtered, 80467
+)
+W = pd.DataFrame(*w.full()).astype(int)
+np.dot(W, y) 
+```
+
+```{python}
+y = df_filtered["total_employment"].values.reshape(-1,1)
+weights.lag_spatial(w,y)
+```
+
+```{python}
+tesd2 = df_filtered
+tesd2["w_emplyment"] = np.dot(W, y) 
+tesd2
+```
+
+
+```{python}
+formula = 'total_employment ~ w_emplyment + k_index'
+model = bmb.Model(formula, tesd2)
+trace = model.fit(draws=1000, tune=1000, chains=4)
+```
+
+
+```{python}
+az.summary(trace, hdi_prob=0.95)
+az.plot_trace(trace)
+plt.show()
+```
+
+
+```{python}
+Y = tesd2["total_employment"]
+X = tesd2[["w_emplyment","k_index"]]
+X = sm.add_constant(X)
+model = sm.OLS(Y,X)
+results = model.fit()
+print(results.summary())
+```

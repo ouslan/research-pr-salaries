@@ -2,7 +2,7 @@ from ..jp_qcew.src.data.data_process import cleanData
 from ..models import init_countytable, init_coutsubtable, init_zipstable
 import logging
 import geopandas as gpd
-import ibis
+import polars as pl
 import os
 
 
@@ -10,123 +10,90 @@ class DataReg(cleanData):
     def __init__(
         self,
         saving_dir: str = "data/",
-        database_url: str = "duckdb:///data.ddb",
+        database_file: str = "data.ddb",
+        log_file: str = "data_process.log",
     ):
-        super().__init__(saving_dir, database_url)
+        super().__init__(saving_dir, database_file, log_file)
 
-    def semipar_data(self):
-        if "qcewtable" not in self.conn.list_tables():
+    def base_data(self):
+        if "qcewtable" not in self.conn.sql("SHOW TABLES;").df().get("name").tolist():
             self.make_qcew_dataset()
-        if "countytable" not in self.conn.list_tables():
-            self.make_spatial_table()
-        df_qcew = self.conn.table("qcewtable")
-        # gdf = self.conn.table("countytable")
 
-        df_qcew = df_qcew.filter(~df_qcew.geom.x().isnull())
-        df_qcew = df_qcew.filter(df_qcew.geom.x() != 0)
-        df_qcew = df_qcew.mutate(
-            first_month_employment=df_qcew.first_month_employment.fill_null(0),
-            second_month_employment=df_qcew.second_month_employment.fill_null(0),
-            third_month_employment=df_qcew.third_month_employment.fill_null(0),
-            total_wages=df_qcew.total_wages.fill_null(0),
+        df_qcew = self.conn.sql(
+            "SELECT year,qtr,phys_addr_5_zip,first_month_employment,total_wages,second_month_employment,third_month_employment,naics_code FROM qcewtable"
+        ).pl()  # TODO: ensure that there is no null inf or nan in the data
+        df_qcew = df_qcew.rename({"phys_addr_5_zip":"zipcode"})
+        df_qcew = df_qcew.filter((pl.col("zipcode") != "") & (pl.col("naics_code") != ""))
+        df_qcew = df_qcew.with_columns(
+            first_month_employment=pl.col("first_month_employment").fill_null(
+                strategy="zero"
+            ),
+            second_month_employment=pl.col("second_month_employment").fill_null(
+                strategy="zero"
+            ),
+            third_month_employment=pl.col("third_month_employment").fill_null(
+                strategy="zero"
+            ),
+            total_wages=pl.col("total_wages").fill_null(strategy="zero"),
         )
-        # TODO: ensure that there is no null inf or nan in the data
-        df_qcew = df_qcew.mutate(
+        df_qcew = df_qcew.with_columns(
             total_employment=(
-                df_qcew.first_month_employment
-                + df_qcew.second_month_employment
-                + df_qcew.third_month_employment
+                pl.col("first_month_employment")
+                + pl.col("second_month_employment")
+                + pl.col("third_month_employment")
             )
             / 3
         )
-
-        df_qcew = df_qcew.mutate(
-            wages_employee=df_qcew.total_wages / df_qcew.total_employment,
-            naics2=df_qcew.naics_code.substr(0, 2),
+        df_qcew = df_qcew.filter(
+            (pl.col("total_employment") != 0) & (pl.col("total_wages") != 0)
         )
-        df_qcew = df_qcew.mutate(
-            wages_employee=ibis.case()
-            .when((df_qcew.wages_employee.isnan()), 0.0)
-            .else_(df_qcew.wages_employee)
-            .end()
+        df_qcew = df_qcew.with_columns(
+            wages_employee=pl.col("total_wages") / pl.col("total_employment"),
+            sector=pl.col("naics_code").str.slice(0, 2),
+        )
+        df_qcew = df_qcew.group_by(["year", "sector", "zipcode"]).agg(
+            mw_industry=pl.col("wages_employee").mean(),
+            total_employment=pl.col("total_employment").mean(),
+        )
+        df_qcew = df_qcew.with_columns(
+            min_wage=pl.when((pl.col("year") >= 2002) & (pl.col("year") < 2010))
+            .then(5.15 * 65 * 8)
+            .when((pl.col("year") >= 2010) & (pl.col("year") < 2023))
+            .then(7.25 * 65 * 8)
+            .when(pl.col("year") == 2023)
+            .then(8.5 * 65 * 8)
+            .when(pl.col("year") == 2024)
+            .then(10.5 * 65 * 8)
+            .otherwise(-1)
+        )
+        df_qcew = df_qcew.with_columns(
+            k_index=pl.col("min_wage") / pl.col("mw_industry")
         )
 
-        df_qcew = df_qcew.select(
-            "id",
-            "year",
-            "qtr",
-            "naics2",
-            "phys_addr_5_zip",
-            "total_employment",
-            "wages_employee",
-            "total_wages",
-            "geom",
-        )
-        # NOTE: I could define the first module to prevent master_df to be unbounded
-        # for muni in range(1, gdf.id.max().execute() - 1):  # gdf.id.max().execute() - 1
-        #     try:
-        #         tmp = gdf.filter(gdf.id == muni).geom.as_scalar()
-        #         temp = df_qcew.filter(df_qcew.geom.within(tmp))
-        #         temp = temp.mutate(county_id=muni)
-        #         master_df = ibis.union(master_df, temp)
-        #     except NameError:
-        #         tmp = gdf.filter(gdf.id == muni).geom.as_scalar()
-        #         temp = df_qcew.filter(df_qcew.geom.within(tmp))
-        #         temp = temp.mutate(county_id=muni)
-        #         master_df = temp
-
-        # df_qcew = df_qcew.group_by(["year", "naics2", "phys_addr_5_zip"]).aggregate(
-        #     [
-        #         df_qcew.wages_employee.mean().name("mw_industry"),
-        #         df_qcew.total_employment.sum().name("total_employment"),
-        #     ]
-        # )
-
-        # df_qcew = df_qcew.mutate(
-        #     min_wage=ibis.case()
-        #     .when((df_qcew.year >= 2002) & (df_qcew.year < 2009), 5.15 * 65 * 8)
-        #     .when((df_qcew.year >= 2010) & (df_qcew.year < 2023), 7.25 * 65 * 8)
-        #     .when((df_qcew.year == 2023), 8.5 * 65 * 8)
-        #     .when((df_qcew.year == 2024), 10.5 * 65 * 8)
-        #     .else_(None)
-        #     .end(),
-        # )
-        # df_qcew = df_qcew.mutate(k_index=df_qcew.min_wage / df_qcew.mw_industry)
-
-        return df_qcew # df_qcew.join(gdf, df_qcew.county_id == gdf.id)
+        return df_qcew  # df_qcew.join(gdf, df_qcew.county_id == gdf.id)
 
     def make_spatial_table(self):
-        # pull shape files from the census
-        if not os.path.exists(f"{self.saving_dir}external/county.zip"):
-            self.pull_file(
-                url="https://www2.census.gov/geo/tiger/TIGER2024/COUNTY/tl_2024_us_county.zip",
-                filename=f"{self.saving_dir}external/county.zip",
-            )
-            logging.info("Downloaded county shape file")
-        if not os.path.exists(f"{self.saving_dir}external/countsub.zip"):
-            self.pull_file(
-                url="https://www2.census.gov/geo/tiger/TIGER2024/COUSUB/tl_2024_72_cousub.zip",
-                filename=f"{self.saving_dir}external/countsub.zip",
-            )
-            logging.info("Downloaded sub county shape file")
-        if not os.path.exists(f"{self.saving_dir}external/zips_shape.zip"):
-            self.pull_file(
-                url="https://www2.census.gov/geo/tiger/TIGER2024/ZCTA520/tl_2024_us_zcta520.zip",
-                filename=f"{self.saving_dir}external/zips_shape.zip",
-            )
-            logging.info("Downloaded zipcode shape files")
         # initiiate the database tables
-        if "countytable" not in self.conn.list_tables():
-            init_countytable(self.data_file)
-            gdf = gpd.read_file("data/external/county.zip", engine="pyogrio")
-            gdf = gdf[gdf["STATEFP"] == "72"]
-            gdf = gdf[["GEOID", "NAME", "geometry"]].reset_index(drop=True)
-            gdf = gdf.rename(
-                columns={"GEOID": "geo_id", "NAME": "name", "geometry": "geom"}
+        if "zipstable" not in self.conn.sql("SHOW TABLES;").df().get("name").tolist():
+            # Download the shape files
+            if not os.path.exists(f"{self.saving_dir}external/zips_shape.zip"):
+                self.pull_file(
+                    url="https://www2.census.gov/geo/tiger/TIGER2024/ZCTA520/tl_2024_us_zcta520.zip",
+                    filename=f"{self.saving_dir}external/zips_shape.zip",
+                )
+                logging.info("Downloaded zipcode shape files")
+
+            # Process and insert the shape files
+            gdf = gpd.read_file(f"{self.saving_dir}external/zips_shape.zip")
+            gdf = gdf[gdf["ZCTA5CE20"].str.startswith("00")]
+            gdf = gdf.rename({"ZCTA5CE20": "zipcode"}).reset_index()
+            gdf = gdf[["zipcode", "geometry"]]
+            gdf["zipcode"] = gdf["zipcode"].str.strip()
+            df = gdf.drop(columns="geometry")
+            geometry = gdf["geometry"].apply(lambda geom: geom.wkt)
+            df["geometry"] = geometry
+            self.conn.execute("CREATE TABLE zipstable AS SELECT * FROM df")
+            logging.info(
+                f"The zipstable is empty inserting {self.saving_dir}external/cousub.zip"
             )
-            gdf["geom"] = gdf["geom"].apply(lambda x: x.wkt)
-            self.conn.insert("countytable", gdf)
-        if "countsubtable" not in self.conn.list_tables():
-            init_coutsubtable(self.data_file)
-        if "zipstable" not in self.conn.list_tables():
-            init_zipstable(self.data_file)
+        return self.conn.sql("SELECT * FROM zipstable;")
