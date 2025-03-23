@@ -183,7 +183,7 @@ def init_dp03_table(db_path: str) -> None:
         """
         CREATE TABLE IF NOT EXISTS "DP03Table" (
             year INTEGER,
-            geoid VARCHAR(30),
+            zipcode VARCHAR(5),
             total_house INTEGER,
             inc_less_10k INTEGER,
             inc_10k_15k INTEGER,
@@ -197,23 +197,4 @@ def init_dp03_table(db_path: str) -> None:
             inc_more_200k INTEGER
             );
         """
-    )
-
-
-def init_zipstable(ddb_path: str) -> None:
-    conn = get_conn(ddb_path)
-    conn.load_extension("spatial")
-    conn.sql("DROP SEQUENCE IF EXISTS zips_id_seq;")
-    conn.sql("CREATE SEQUENCE zips_id_seq START WITH 1;")
-    conn.sql(
-        """
-        CREATE TABLE IF NOT EXISTS "zipstable" (
-            id INTEGER PRIMARY KEY DEFAULT nextval('zips_id_seq'),
-            county_id INTEGER,
-            FOREIGN KEY (county_id) REFERENCES countytable (id),
-            name VARCHAR(255) NOT NULL,
-            geo_id VARCHAR(25) NOT NULL,
-            geom geometry
-        );
-    """
     )

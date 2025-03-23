@@ -1,8 +1,12 @@
 from ..jp_qcew.src.data.data_process import cleanData
-from ..models import init_countytable, init_coutsubtable, init_zipstable
-import logging
+from ..models import init_dp03_table
+from json import JSONDecodeError
+from datetime import datetime
+from shapely import wkt
 import geopandas as gpd
 import polars as pl
+import requests
+import logging
 import os
 
 
@@ -22,8 +26,10 @@ class DataReg(cleanData):
         df_qcew = self.conn.sql(
             "SELECT year,qtr,phys_addr_5_zip,first_month_employment,total_wages,second_month_employment,third_month_employment,naics_code FROM qcewtable"
         ).pl()  # TODO: ensure that there is no null inf or nan in the data
-        df_qcew = df_qcew.rename({"phys_addr_5_zip":"zipcode"})
-        df_qcew = df_qcew.filter((pl.col("zipcode") != "") & (pl.col("naics_code") != ""))
+        df_qcew = df_qcew.rename({"phys_addr_5_zip": "zipcode"})
+        df_qcew = df_qcew.filter(
+            (pl.col("zipcode") != "") & (pl.col("naics_code") != "")
+        )
         df_qcew = df_qcew.with_columns(
             first_month_employment=pl.col("first_month_employment").fill_null(
                 strategy="zero"
@@ -72,6 +78,79 @@ class DataReg(cleanData):
 
         return df_qcew  # df_qcew.join(gdf, df_qcew.county_id == gdf.id)
 
+    def pull_query(self, params: list, year: int) -> pl.DataFrame:
+        # prepare custom census query
+        param = ",".join(params)
+        base = "https://api.census.gov/data/"
+        flow = "/acs/acs5/profile"
+        url = f"{base}{year}{flow}?get={param}&for=zip%20code%20tabulation%20area:*&in=state:72"
+        df = pl.DataFrame(requests.get(url).json())
+
+        # get names from DataFrame
+        names = df.select(pl.col("column_0")).transpose()
+        names = names.to_dicts().pop()
+        names = dict((k, v.lower()) for k, v in names.items())
+
+        # Pivot table
+        df = df.drop("column_0").transpose()
+        return df.rename(names).with_columns(year=pl.lit(year))
+
+    def pull_dp03(self) -> pl.DataFrame:
+        if "DP03Table" not in self.conn.sql("SHOW TABLES;").df().get("name").tolist():
+            init_dp03_table(self.data_file)
+        for _year in range(2012, datetime.now().year):
+            if (
+                self.conn.sql(f"SELECT * FROM 'DP03Table' WHERE year={_year}")
+                .df()
+                .empty
+            ):
+                try:
+                    logging.info(f"pulling {_year} data")
+                    tmp = self.pull_query(
+                        params=[
+                            "DP03_0051E",
+                            "DP03_0052E",
+                            "DP03_0053E",
+                            "DP03_0054E",
+                            "DP03_0055E",
+                            "DP03_0056E",
+                            "DP03_0057E",
+                            "DP03_0058E",
+                            "DP03_0059E",
+                            "DP03_0060E",
+                            "DP03_0061E",
+                        ],
+                        year=_year,
+                    )
+                    tmp = tmp.rename(
+                        {
+                            "dp03_0051e": "total_house",
+                            "dp03_0052e": "inc_less_10k",
+                            "dp03_0053e": "inc_10k_15k",
+                            "dp03_0054e": "inc_15k_25k",
+                            "dp03_0055e": "inc_25k_35k",
+                            "dp03_0056e": "inc_35k_50k",
+                            "dp03_0057e": "inc_50k_75k",
+                            "dp03_0058e": "inc_75k_100k",
+                            "dp03_0059e": "inc_100k_150k",
+                            "dp03_0060e": "inc_150k_200k",
+                            "dp03_0061e": "inc_more_200k",
+                        }
+                    )
+                    tmp = tmp.rename({"zip code tabulation area": "zipcode"}).drop(
+                        ["state"]
+                    )
+                    tmp = tmp.with_columns(pl.all().exclude("zipcode").cast(pl.Int64))
+                    self.conn.sql("INSERT INTO 'DP03Table' BY NAME SELECT * FROM tmp")
+                    logging.info(f"succesfully inserting {_year}")
+                except:
+                    logging.warning(f"The ACS for {_year} is not availabe")
+                    continue
+            else:
+                logging.info(f"data for {_year} is in the database")
+                continue
+        return self.conn.sql("SELECT * FROM 'DP03Table';").pl()
+
     def make_spatial_table(self):
         # initiiate the database tables
         if "zipstable" not in self.conn.sql("SHOW TABLES;").df().get("name").tolist():
@@ -86,7 +165,7 @@ class DataReg(cleanData):
             # Process and insert the shape files
             gdf = gpd.read_file(f"{self.saving_dir}external/zips_shape.zip")
             gdf = gdf[gdf["ZCTA5CE20"].str.startswith("00")]
-            gdf = gdf.rename({"ZCTA5CE20": "zipcode"}).reset_index()
+            gdf = gdf.rename(columns={"ZCTA5CE20": "zipcode"}).reset_index()
             gdf = gdf[["zipcode", "geometry"]]
             gdf["zipcode"] = gdf["zipcode"].str.strip()
             df = gdf.drop(columns="geometry")
