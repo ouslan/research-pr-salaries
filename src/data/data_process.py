@@ -19,7 +19,7 @@ class DataReg(cleanData):
     ):
         super().__init__(saving_dir, database_file, log_file)
 
-    def base_data(self):
+    def base_data(self) -> pl.DataFrame:
         if "qcewtable" not in self.conn.sql("SHOW TABLES;").df().get("name").tolist():
             self.make_qcew_dataset()
 
@@ -77,6 +77,17 @@ class DataReg(cleanData):
         )
 
         return df_qcew  # df_qcew.join(gdf, df_qcew.county_id == gdf.id)
+
+    def spatial_data(self):
+        df_qcew = self.base_data()
+        df_dp03 = self.pull_dp03()
+        pr_zips = self.make_qcew_dataset()
+
+        df = df_qcew.join(df_dp03, on=["zipcode","year"], how="inner")
+        gdf = pr_zips.join(
+                df.to_pandas().set_index("zipcode"), on="zipcode", how="inner", validate="1:m"
+        ).reset_index(drop=True)
+        return gdf
 
     def pull_query(self, params: list, year: int) -> pl.DataFrame:
         # prepare custom census query
