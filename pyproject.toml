@@ -18,6 +18,7 @@ dependencies = [
   "numba>=0.61.0",
   "arviz[all]>=0.21.0",
   "bambi>=0.15.0",
+  "causalpy>=0.4.0",
 ]
 
 [dependency-groups]
