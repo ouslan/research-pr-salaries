@@ -57,7 +57,7 @@ class DataReg(cleanData):
             wages_employee=pl.col("total_wages") / pl.col("total_employment"),
             sector=pl.col("naics_code").str.slice(0, 2),
         )
-        df_qcew = df_qcew.group_by(["year", "qtr", "sector", "zipcode"]).agg(
+        df_qcew = df_qcew.group_by(["year", "sector", "zipcode"]).agg(
             mw_industry=pl.col("wages_employee").mean(),
             total_employment=pl.col("total_employment").mean(),
         )
