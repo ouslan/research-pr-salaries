@@ -13,35 +13,22 @@ os.chdir("..")
 
 ```{python}
 from src.data.data_process import DataReg
-from src.dao.zips_table import create_zips
-from src.data.data_process import DataReg
-from sqlmodel import create_engine
+import ibis 
 import geopandas as gpd
-import pandas as pd
-from sqlmodel import SQLModel
-import ibis
-from shapely.geometry import MultiPolygon, Polygon
-import sqlite3
+
+dr = DataReg()
 
 ibis.options.interactive = True
 ```
 
 ```{python}
-engine = create_engine("postgresql://postgres:password@localhost:5432/postgres")
-conn = ibis.postgres.connect(
-  user="postgres",
-  password="password",
-  host="localhost",
-  port="5432",
-  database="postgres",
-)
-create_zips(engine)
+dr.make_spatial_table()
 ```
 
 ```{python}
-# create_zips(engine)
-df = zips[["ZCTA5CE20", "geometry"]].rename(columns={"ZCTA5CE20":"zipcode"}).reset_index(drop=True)
-conn.insert("ZipsTable")
+gdf = gpd.read_file("data/external/zip_shape.zip")
+gdf = gdf[["ZCTA5CE20", "geometry"]].rename(columns={"ZCTA5CE20":"zipcode"}).reset_index(drop=True)
+gdf
 ```
 
 ```{python}

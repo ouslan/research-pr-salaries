@@ -2,7 +2,7 @@ from src.data.data_process import DataReg
 
 
 def main() -> None:
-    d = DataReg("data/")
+    d = DataReg()
     d.make_qcew_dataset()
 
 
