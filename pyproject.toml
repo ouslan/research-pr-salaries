@@ -19,12 +19,15 @@ dependencies = [
   "arviz[all]>=0.21.0",
   "bambi>=0.15.0",
   "causalpy>=0.4.0",
+  "jax>=0.5.3",
+  "blackjax>=1.2.5",
 ]
 
 [dependency-groups]
 dev = [
     "gcsfs>=2024.12.0",
     "jupyter>=1.1.1",
+    "nutpie>=0.14.3",
     "pins>=0.8.7",
     "pynvim>=0.5.2",
 ]
