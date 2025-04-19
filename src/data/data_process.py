@@ -57,7 +57,7 @@ class DataReg(cleanData):
             wages_employee=pl.col("total_wages") / pl.col("total_employment"),
             sector=pl.col("naics_code").str.slice(0, 2),
         )
-        df_qcew = df_qcew.group_by(["year", "sector", "zipcode"]).agg(
+        df_qcew = df_qcew.group_by(["year", "qtr", "zipcode"]).agg(
             mw_industry=pl.col("wages_employee").mean(),
             total_employment=pl.col("total_employment").mean(),
         )
@@ -119,6 +119,7 @@ class DataReg(cleanData):
                     logging.info(f"pulling {_year} data")
                     tmp = self.pull_query(
                         params=[
+                            "DP03_0001E",
                             "DP03_0051E",
                             "DP03_0052E",
                             "DP03_0053E",
@@ -135,6 +136,7 @@ class DataReg(cleanData):
                     )
                     tmp = tmp.rename(
                         {
+                            "dp03_0001e": "total_population",
                             "dp03_0051e": "total_house",
                             "dp03_0052e": "inc_less_10k",
                             "dp03_0053e": "inc_10k_15k",

@@ -184,6 +184,7 @@ def init_dp03_table(db_path: str) -> None:
         CREATE TABLE IF NOT EXISTS "DP03Table" (
             year INTEGER,
             zipcode VARCHAR(5),
+            total_population INTEGER,
             total_house INTEGER,
             inc_less_10k INTEGER,
             inc_10k_15k INTEGER,
