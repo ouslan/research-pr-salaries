@@ -176,3 +176,5 @@ data/external/
 *.ddb
 *.wal
 assets/
+aux/
+*.gz

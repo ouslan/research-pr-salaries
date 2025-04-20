@@ -57,7 +57,7 @@ class DataReg(cleanData):
             wages_employee=pl.col("total_wages") / pl.col("total_employment"),
             sector=pl.col("naics_code").str.slice(0, 2),
         )
-        df_qcew = df_qcew.group_by(["year", "qtr", "zipcode"]).agg(
+        df_qcew = df_qcew.group_by(["year", "qtr", "sector", "zipcode"]).agg(
             mw_industry=pl.col("wages_employee").mean(),
             total_employment=pl.col("total_employment").mean(),
         )
@@ -83,9 +83,12 @@ class DataReg(cleanData):
         df_dp03 = self.pull_dp03()
         pr_zips = self.make_spatial_table()
 
-        df = df_qcew.join(df_dp03, on=["zipcode","year"], how="inner")
+        df = df_qcew.join(df_dp03, on=["zipcode", "year"], how="inner")
         gdf = pr_zips.join(
-                df.to_pandas().set_index("zipcode"), on="zipcode", how="inner", validate="1:m"
+            df.to_pandas().set_index("zipcode"),
+            on="zipcode",
+            how="inner",
+            validate="1:m",
         ).reset_index(drop=True)
         return gdf
 
