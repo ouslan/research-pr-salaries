@@ -34,7 +34,6 @@
 \usepackage{graphicx}  % Required for including images
 
 \usepackage{booktabs} % Top and bottom rules for tables
-
 %----------------------------------------------------------------------------------------
 %	TITLE SECTION
 %----------------------------------------------------------------------------------------
@@ -43,7 +42,7 @@
 
 \author{Alejandro M. Ouslan and Julio C. Hernandez} % Author(s)
 
-\institute{Department of Mathematics and University of Puerto Rico Mayaguez} % Institution(s)
+\institute{Department of Mathematics from the University of Puerto Rico Mayaguez} % Institution(s)
 
 %----------------------------------------------------------------------------------------
 
@@ -64,30 +63,15 @@
 		\begin{column}{\onecolwid} % The first column
 
 			%----------------------------------------------------------------------------------------
-			%	OBJECTIVES
-			%----------------------------------------------------------------------------------------
-
-			\begin{alertblock}{Objectives}
-
-				Lorem ipsum dolor sit amet, consectetur, nunc tellus pulvinar tortor, commodo eleifend risus arcu sed odio:
-				\begin{itemize}
-					\item Mollis dignissim, magna augue tincidunt dolor, interdum vestibulum urna
-					\item Sed aliquet luctus lectus, eget aliquet leo ullamcorper consequat. Vivamus eros sem, iaculis ut euismod non, sollicitudin vel orci.
-					\item Nascetur ridiculus mus.
-					\item Euismod non erat. Nam ultricies pellentesque nunc, ultrices volutpat nisl ultrices a.
-				\end{itemize}
-
-			\end{alertblock}
-
-			%----------------------------------------------------------------------------------------
 			%	INTRODUCTION
 			%----------------------------------------------------------------------------------------
 
 			\begin{block}{Introduction}
 
-				Lorem ipsum dolor \textbf{sit amet}, consectetur adipiscing elit. Sed commodo molestie porta. Sed ultrices scelerisque sapien ac commodo. Donec ut volutpat elit. Sed laoreet accumsan mattis. Integer sapien tellus, auctor ac blandit eget, sollicitudin vitae lorem. Praesent dictum tempor pulvinar. Suspendisse potenti. Sed tincidunt varius ipsum, et porta nulla suscipit et. Etiam congue bibendum felis, ac dictum augue cursus a. \textbf{Donec} magna eros, iaculis sit amet placerat quis, laoreet id est. In ut orci purus, interdum ornare nibh. Pellentesque pulvinar, nibh ac malesuada accumsan, urna nunc convallis tortor, ac vehicula nulla tellus eget nulla. Nullam lectus tortor, \textit{consequat tempor hendrerit} quis, vestibulum in diam. Maecenas sed diam augue.
+				There are many studies looking at the impact of minimum salarie on the employment but there are not many studies at looking the spatial effect in the changes
+				in the minimum salaries. Throught this studies used the Kaitz index to measure the effects of mimnume salarieis in all the zipcodes of PR. We found there
+				is a negative "spill-over" effect of the Kaitz index on employment
 
-				This statement requires citation \cite{Smith:2012qr}.
 
 			\end{block}
 
@@ -97,6 +81,27 @@
 				\includegraphics[width=0.8\linewidth]{placeholder.jpg}
 				\caption{Figure caption}
 			\end{figure}
+			\begin{block}{Materials}
+
+				The following materials were required to complete the research:
+
+				\begin{itemize}
+					\item Curabitur pellentesque dignissim
+					\item Eu facilisis est tempus quis
+					\item Duis porta consequat lorem
+					\item Eu facilisis est tempus quis
+				\end{itemize}
+
+				The materials were prepared according to the steps outlined below:
+
+				\begin{enumerate}
+					\item Curabitur pellentesque dignissim
+					\item Eu facilisis est tempus quis
+					\item Duis porta consequat lorem
+					\item Curabitur pellentesque dignissim
+				\end{enumerate}
+
+			\end{block}
 
 			%----------------------------------------------------------------------------------------
 
@@ -110,31 +115,6 @@
 
 				\begin{column}{\onecolwid}\vspace{-.6in} % The first column within column 2 (column 2.1)
 
-					%----------------------------------------------------------------------------------------
-					%	MATERIALS
-					%----------------------------------------------------------------------------------------
-
-					\begin{block}{Materials}
-
-						The following materials were required to complete the research:
-
-						\begin{itemize}
-							\item Curabitur pellentesque dignissim
-							\item Eu facilisis est tempus quis
-							\item Duis porta consequat lorem
-							\item Eu facilisis est tempus quis
-						\end{itemize}
-
-						The materials were prepared according to the steps outlined below:
-
-						\begin{enumerate}
-							\item Curabitur pellentesque dignissim
-							\item Eu facilisis est tempus quis
-							\item Duis porta consequat lorem
-							\item Curabitur pellentesque dignissim
-						\end{enumerate}
-
-					\end{block}
 
 					%----------------------------------------------------------------------------------------
 
@@ -146,10 +126,14 @@
 					%	METHODS
 					%----------------------------------------------------------------------------------------
 
-					\begin{block}{Methods}
+					\begin{block}{Data methods}
 
-						Lorem ipsum dolor \textbf{sit amet}, consectetur adipiscing elit. Sed laoreet accumsan mattis. Integer sapien tellus, auctor ac blandit eget, sollicitudin vitae lorem. Praesent dictum tempor pulvinar. Suspendisse potenti. Sed tincidunt varius ipsum, et porta nulla suscipit et. Etiam congue bibendum felis, ac dictum augue cursus a. \textbf{Donec} magna eros, iaculis sit amet placerat quis, laoreet id est. In ut orci purus, interdum ornare nibh. Pellentesque pulvinar, nibh ac malesuada accumsan, urna nunc convallis tortor, ac vehicula nulla tellus eget nulla. Nullam lectus tortor, \textit{consequat tempor hendrerit} quis, vestibulum in diam. Maecenas sed diam augue.
-
+						For this study we desided to use a Bayesian apraach to estimate the spill-over effects in witch we specified weakly informative priors for all model terms,
+						by loosely scaling them to the observed data and used a tune of 2000 samples and a target accept of $.95$
+						\begin{figure}
+							\includegraphics[width=0.8\linewidth]{priori.png}
+							\caption{Figure caption}
+						\end{figure}
 					\end{block}
 
 					%----------------------------------------------------------------------------------------
@@ -158,15 +142,7 @@
 
 			\end{columns} % End of the split of column 2 - any content after this will now take up 2 columns width
 
-			%----------------------------------------------------------------------------------------
-			%	IMPORTANT RESULT
-			%----------------------------------------------------------------------------------------
 
-			\begin{alertblock}{Important Result}
-
-				Lorem ipsum dolor \textbf{sit amet}, consectetur adipiscing elit. Sed commodo molestie porta. Sed ultrices scelerisque sapien ac commodo. Donec ut volutpat elit.
-
-			\end{alertblock}
 
 			%----------------------------------------------------------------------------------------
 
@@ -180,26 +156,24 @@
 
 					\begin{block}{Mathematical Section}
 
-						Nam quis odio enim, in molestie libero. Vivamus cursus mi at nulla elementum sollicitudin. Nam quis odio enim, in molestie libero. Vivamus cursus mi at nulla elementum sollicitudin.
-
+						The main coefficient for this study is the \textbf{Kaitz Indez} \cite{baker1994demography}. The idez is calculated as follows:
 						\begin{equation}
-							E = mc^{2}
-							\label{eqn:Einstein}
+							Kaitz = \frac{m}{w}
 						\end{equation}
 
-						Nam quis odio enim, in molestie libero. Vivamus cursus mi at nulla elementum sollicitudin. Nam quis odio enim, in molestie libero. Vivamus cursus mi at nulla elementum sollicitudin.
+						where $m$ represents the nomiinal legal wage, and $w$ is the mean wage. To account fo the spatial autocorrelation, the Kaitz index is modified as:
 
 						\begin{equation}
-							\cos^3 \theta =\frac{1}{4}\cos\theta+\frac{3}{4}\cos 3\theta
-							\label{eq:refname}
+							Kaitz_{it} = \frac{m_t}{\bar{w}_{it}}
 						\end{equation}
 
-						Nam quis odio enim, in molestie libero. Vivamus cursus mi at nulla elementum sollicitudin. Nam quis odio enim, in molestie libero. Vivamus cursus mi at nulla elementum sollicitudin.
+						where $m_t$ is the minimum wage for the specific time period, and $\bar{w}_{it}$ is the mean wage for the $i$-th zipcode at time $t$.
 
+						To asses teh impact of the Kaitz index and its spillover effects, follow the following model according to the speciifications in \cite{elhorst2003specification}
 						\begin{equation}
-							\kappa =\frac{\xi}{E_{\mathrm{max}}} %\mathbb{ZNR}
+							y_{it} = \rho \sum_{j=1}^N w_{ij} y_{jt}  +  Kaitz_{it} \cdot \beta  +  \mu_i  +  e_{it}
 						\end{equation}
-
+						Where $\sum_{j=1}^N w_{ij} y_{jt}$ represents the mean Emplyment of the neighbors of zipcode $i$. $\rho$ is the spillover effect, $\mu_i$ is the spatial error and $\epsilon_{it}$ is the error term
 					\end{block}
 
 					%----------------------------------------------------------------------------------------
@@ -215,7 +189,7 @@
 					\begin{block}{Results}
 
 						\begin{figure}
-							\includegraphics[width=0.8\linewidth]{placeholder.jpg}
+							\includegraphics[width=0.8\linewidth]{results.png}
 							\caption{Figure caption}
 						\end{figure}
 
@@ -259,20 +233,6 @@
 
 			\end{block}
 
-			%----------------------------------------------------------------------------------------
-			%	ADDITIONAL INFORMATION
-			%----------------------------------------------------------------------------------------
-
-			\begin{block}{Additional Information}
-
-				Maecenas ultricies feugiat velit non mattis. Fusce tempus arcu id ligula varius dictum.
-				\begin{itemize}
-					\item Curabitur pellentesque dignissim
-					\item Eu facilisis est tempus quis
-					\item Duis porta consequat lorem
-				\end{itemize}
-
-			\end{block}
 
 			%----------------------------------------------------------------------------------------
 			%	REFERENCES
@@ -282,7 +242,7 @@
 
 				\nocite{*} % Insert publications even if they are not cited in the poster
 				\small{\bibliographystyle{unsrt}
-					\bibliography{sample}\vspace{0.75in}}
+					\bibliography{references}\vspace{0.75in}}
 
 			\end{block}
 
