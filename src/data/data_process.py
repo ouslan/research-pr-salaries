@@ -1,8 +1,6 @@
 from ..jp_qcew.src.data.data_process import cleanData
 from ..models import init_dp03_table
-from json import JSONDecodeError
 from datetime import datetime
-from shapely import wkt
 import geopandas as gpd
 import polars as pl
 import requests
