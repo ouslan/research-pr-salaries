@@ -3,6 +3,7 @@ from ..models import init_dp03_table
 from datetime import datetime
 import geopandas as gpd
 import polars as pl
+import pandas as pd
 import requests
 import logging
 import os
@@ -23,7 +24,7 @@ class DataReg(cleanData):
 
         df_qcew = self.conn.sql(
             "SELECT year,qtr,phys_addr_5_zip,first_month_employment,total_wages,second_month_employment,third_month_employment,naics_code FROM qcewtable"
-        ).pl()  # TODO: ensure that there is no null inf or nan in the data
+        ).pl()
         df_qcew = df_qcew.rename({"phys_addr_5_zip": "zipcode"})
         df_qcew = df_qcew.filter(
             (pl.col("zipcode") != "") & (pl.col("naics_code") != "")
@@ -76,12 +77,30 @@ class DataReg(cleanData):
 
         return df_qcew  # df_qcew.join(gdf, df_qcew.county_id == gdf.id)
 
-    def spatial_data(self):
+    def dp03_data(self, colums: list) -> pd.DataFrame:
+        df = self.pull_dp03()
+        df = (
+            df[df["year"] >= 2012]
+            .sort_values(by=["zipcode", "year", "qtr"])
+            .reset_index(drop=True)
+        )
+        for col in colums:
+            df[col] = df[col].interpolate(method="cubic")
+            df = df.sort_values(by=["year", "qtr", "zipcode"]).reset_index(drop=True)
+
+    def spatial_data(self) -> gpd.GeoDataFrame:
         df_qcew = self.base_data()
         df_dp03 = self.pull_dp03()
         pr_zips = self.make_spatial_table()
 
         df = df_qcew.join(df_dp03, on=["zipcode", "year"], how="inner")
+        gdf = pr_zips.join(
+            df.to_pandas().set_index("zipcode"),
+            on="zipcode",
+            how="inner",
+            validate="1:1",
+        ).reset_index(drop=True)
+
         gdf = pr_zips.join(
             df.to_pandas().set_index("zipcode"),
             on="zipcode",
@@ -165,7 +184,7 @@ class DataReg(cleanData):
                 continue
         return self.conn.sql("SELECT * FROM 'DP03Table';").pl()
 
-    def make_spatial_table(self):
+    def make_spatial_table(self) -> pd.DataFrame:
         # initiiate the database tables
         if "zipstable" not in self.conn.sql("SHOW TABLES;").df().get("name").tolist():
             # Download the shape files
@@ -189,4 +208,4 @@ class DataReg(cleanData):
             logging.info(
                 f"The zipstable is empty inserting {self.saving_dir}external/cousub.zip"
             )
-        return self.conn.sql("SELECT * FROM zipstable;")
+        return self.conn.sql("SELECT * FROM zipstable;").df()
