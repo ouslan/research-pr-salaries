@@ -175,3 +175,6 @@ data/external/
 *.sqlite
 *.ddb
 *.wal
+assets/
+aux/
+*.gz
