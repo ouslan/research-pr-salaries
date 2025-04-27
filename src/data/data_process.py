@@ -1,12 +1,15 @@
-from ..jp_qcew.src.data.data_process import cleanData
-from ..models import init_dp03_table
-from datetime import datetime
-import geopandas as gpd
-import polars as pl
-import pandas as pd
-import requests
 import logging
 import os
+from datetime import datetime
+
+import geopandas as gpd
+import pandas as pd
+import polars as pl
+import requests
+from shapely import wkt
+
+from ..jp_qcew.src.data.data_process import cleanData
+from ..models import init_dp03_table
 
 
 class DataReg(cleanData):
@@ -75,38 +78,50 @@ class DataReg(cleanData):
             k_index=pl.col("min_wage") / pl.col("mw_industry")
         )
 
-        return df_qcew  # df_qcew.join(gdf, df_qcew.county_id == gdf.id)
+        return df_qcew
 
-    def dp03_data(self, colums: list) -> pd.DataFrame:
-        df = self.pull_dp03()
-        df = (
-            df[df["year"] >= 2012]
-            .sort_values(by=["zipcode", "year", "qtr"])
-            .reset_index(drop=True)
-        )
-        for col in colums:
-            df[col] = df[col].interpolate(method="cubic")
-            df = df.sort_values(by=["year", "qtr", "zipcode"]).reset_index(drop=True)
-
-    def spatial_data(self) -> gpd.GeoDataFrame:
+    def make_dataset(self):
         df_qcew = self.base_data()
-        df_dp03 = self.pull_dp03()
-        pr_zips = self.make_spatial_table()
+        gdf = self.spatial_data()
+        dp03_df = self.pull_dp03()
+        dp03_df = dp03_df.with_columns(qtr=4)
 
-        df = df_qcew.join(df_dp03, on=["zipcode", "year"], how="inner")
-        gdf = pr_zips.join(
-            df.to_pandas().set_index("zipcode"),
-            on="zipcode",
-            how="inner",
-            validate="1:1",
-        ).reset_index(drop=True)
-
-        gdf = pr_zips.join(
-            df.to_pandas().set_index("zipcode"),
+        gdf = gdf.join(
+            df_qcew.to_pandas().set_index("zipcode"),
             on="zipcode",
             how="inner",
             validate="1:m",
-        ).reset_index(drop=True)
+        )
+
+        gdf = gdf.merge(
+            dp03_df.to_pandas(),
+            on=["year", "qtr", "zipcode"],
+            how="left",
+            validate="1:1",
+        )
+
+        gdf = gdf.sort_values(by=["zipcode", "year", "qtr"]).reset_index(drop=True)
+        columns = [
+            "inc_25k_35k",
+            "inc_35k_50k",
+            "inc_50k_75k",
+            "inc_75k_100k",
+            "inc_100k_150k",
+            "inc_150k_200k",
+            "inc_more_200k",
+        ]
+        for col in columns:
+            gdf[col] = gdf.groupby("zipcode")[col].transform(
+                lambda group: group.interpolate(method="cubic")
+            )
+        return gdf[(gdf["year"] >= 2012) & (gdf["year"] < 2023)]
+
+    def spatial_data(self) -> gpd.GeoDataFrame:
+        gdf = gpd.GeoDataFrame(self.make_spatial_table())
+        gdf["geometry"] = gdf["geometry"].apply(wkt.loads)
+        gdf = gdf.set_geometry("geometry").set_crs("EPSG:4269", allow_override=True)
+        gdf = gdf.to_crs("EPSG:3395")
+        gdf["zipcode"] = gdf["zipcode"].astype(str)
         return gdf
 
     def pull_query(self, params: list, year: int) -> pl.DataFrame:
@@ -129,7 +144,7 @@ class DataReg(cleanData):
     def pull_dp03(self) -> pl.DataFrame:
         if "DP03Table" not in self.conn.sql("SHOW TABLES;").df().get("name").tolist():
             init_dp03_table(self.data_file)
-        for _year in range(2012, 2019):
+        for _year in range(2012, 2023):
             if (
                 self.conn.sql(f"SELECT * FROM 'DP03Table' WHERE year={_year}")
                 .df()

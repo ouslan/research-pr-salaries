@@ -21,6 +21,7 @@ dependencies = [
   "causalpy>=0.4.0",
   "jax>=0.5.3",
   "blackjax>=1.2.5",
+  "linearmodels>=6.1",
 ]
 
 [dependency-groups]
