@@ -136,7 +136,7 @@ class DataReg(cleanData):
         w = weights.Queen.from_dataframe(gdf[(gdf["year"] == 2012) & (gdf["qtr"] == 1)])
 
         # Assuming `df` has 'year' and 'quarter' columns for grouping
-        for year in range(2012, 2019):
+        for year in range(2012, 2022):
             for qtr in range(1, 5):
                 group_df = gdf[(gdf["year"] == year) & (gdf["qtr"] == qtr)].reset_index(
                     drop=True
@@ -172,7 +172,7 @@ class DataReg(cleanData):
         param = ",".join(params)
         base = "https://api.census.gov/data/"
         flow = "/acs/acs5/profile"
-        url = f"{base}{year}{flow}?get={param}&for=zip%20code%20tabulation%20area:*&in=state:72"
+        url = f"{base}{year}{flow}?get={param}&for=zip%20code%20tabulation%20area:*"
         df = pl.DataFrame(requests.get(url).json())
 
         # get names from DataFrame
@@ -187,7 +187,7 @@ class DataReg(cleanData):
     def pull_dp03(self) -> pl.DataFrame:
         if "DP03Table" not in self.conn.sql("SHOW TABLES;").df().get("name").tolist():
             init_dp03_table(self.data_file)
-        for _year in range(2011, 2020):
+        for _year in range(2011, 2024):
             if (
                 self.conn.sql(f"SELECT * FROM 'DP03Table' WHERE year={_year}")
                 .df()
@@ -214,7 +214,7 @@ class DataReg(cleanData):
                         "DP03_0059E",
                         "DP03_0060E",
                         "DP03_0061E",
-                        "DP03_0066E",
+                        "DP03_0070E",
                         "DP03_0074E",
                     ],
                     year=_year,
@@ -239,13 +239,11 @@ class DataReg(cleanData):
                         "dp03_0059e": "inc_100k_150k",
                         "dp03_0060e": "inc_150k_200k",
                         "dp03_0061e": "inc_more_200k",
-                        "dp03_0066e": "with_social_security",
+                        "dp03_0070e": "with_social_security",
                         "dp03_0074e": "food_stamp",
                     }
                 )
-                tmp = tmp.rename({"zip code tabulation area": "zipcode"}).drop(
-                    ["state"]
-                )
+                tmp = tmp.rename({"zip code tabulation area": "zipcode"})
                 self.conn.sql("INSERT INTO 'DP03Table' BY NAME SELECT * FROM tmp")
                 logging.info(f"succesfully inserting {_year}")
                 # except:
