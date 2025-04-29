@@ -7,6 +7,7 @@ import pandas as pd
 import polars as pl
 import requests
 from shapely import wkt
+from pysal.lib import weights
 
 from ..jp_qcew.src.data.data_process import cleanData
 from ..models import init_dp03_table
@@ -77,6 +78,7 @@ class DataReg(cleanData):
         df_qcew = df_qcew.with_columns(
             k_index=pl.col("min_wage") / pl.col("mw_industry")
         )
+        df_qcew = df_qcew.filter(pl.col("zipcode") != "00611")
 
         return df_qcew
 
@@ -102,6 +104,17 @@ class DataReg(cleanData):
 
         gdf = gdf.sort_values(by=["zipcode", "year", "qtr"]).reset_index(drop=True)
         columns = [
+            "total_population",
+            "in_labor_force",
+            "unemployment",
+            "own_children6",
+            "own_children17",
+            "commute_car",
+            "commute_time",
+            "total_house",
+            "inc_less_10k",
+            "inc_10k_15k",
+            "inc_15k_25k",
             "inc_25k_35k",
             "inc_35k_50k",
             "inc_50k_75k",
@@ -109,12 +122,42 @@ class DataReg(cleanData):
             "inc_100k_150k",
             "inc_150k_200k",
             "inc_more_200k",
+            "with_social_security",
+            "food_stamp",
         ]
         for col in columns:
             gdf[col] = gdf.groupby("zipcode")[col].transform(
                 lambda group: group.interpolate(method="cubic")
             )
-        return gdf[(gdf["year"] >= 2012) & (gdf["year"] < 2023)]
+
+        gdf = gdf[(gdf["year"] >= 2012) & (gdf["year"] < 2019)]
+
+        spatial_lag_results = []
+        w = weights.Queen.from_dataframe(gdf[(gdf["year"] == 2012) & (gdf["qtr"] == 1)])
+
+        # Assuming `df` has 'year' and 'quarter' columns for grouping
+        for year in range(2012, 2019):
+            for qtr in range(1, 5):
+                group_df = gdf[(gdf["year"] == year) & (gdf["qtr"] == qtr)].reset_index(
+                    drop=True
+                )
+                spatial_lag_y = self.calculate_spatial_lag(
+                    group_df, w, "total_employment"
+                )
+                spatial_lag_x = self.calculate_spatial_lag(group_df, w, "k_index")
+
+                # Add the spatial lag results back to the group dataframe
+                group_df["w_employment"] = (
+                    spatial_lag_y.flatten()
+                )  # Flatten to make it 1D for the column
+                group_df["w_k_index"] = spatial_lag_x.flatten()
+
+                # Append the group to the results list
+                spatial_lag_results.append(group_df)
+
+        # Concatenate all the results back together
+        gdf = pd.concat(spatial_lag_results)
+        return gdf
 
     def spatial_data(self) -> gpd.GeoDataFrame:
         gdf = gpd.GeoDataFrame(self.make_spatial_table())
@@ -144,56 +187,70 @@ class DataReg(cleanData):
     def pull_dp03(self) -> pl.DataFrame:
         if "DP03Table" not in self.conn.sql("SHOW TABLES;").df().get("name").tolist():
             init_dp03_table(self.data_file)
-        for _year in range(2012, 2023):
+        for _year in range(2011, 2020):
             if (
                 self.conn.sql(f"SELECT * FROM 'DP03Table' WHERE year={_year}")
                 .df()
                 .empty
             ):
-                try:
-                    logging.info(f"pulling {_year} data")
-                    tmp = self.pull_query(
-                        params=[
-                            "DP03_0001E",
-                            "DP03_0051E",
-                            "DP03_0052E",
-                            "DP03_0053E",
-                            "DP03_0054E",
-                            "DP03_0055E",
-                            "DP03_0056E",
-                            "DP03_0057E",
-                            "DP03_0058E",
-                            "DP03_0059E",
-                            "DP03_0060E",
-                            "DP03_0061E",
-                        ],
-                        year=_year,
-                    )
-                    tmp = tmp.rename(
-                        {
-                            "dp03_0001e": "total_population",
-                            "dp03_0051e": "total_house",
-                            "dp03_0052e": "inc_less_10k",
-                            "dp03_0053e": "inc_10k_15k",
-                            "dp03_0054e": "inc_15k_25k",
-                            "dp03_0055e": "inc_25k_35k",
-                            "dp03_0056e": "inc_35k_50k",
-                            "dp03_0057e": "inc_50k_75k",
-                            "dp03_0058e": "inc_75k_100k",
-                            "dp03_0059e": "inc_100k_150k",
-                            "dp03_0060e": "inc_150k_200k",
-                            "dp03_0061e": "inc_more_200k",
-                        }
-                    )
-                    tmp = tmp.rename({"zip code tabulation area": "zipcode"}).drop(
-                        ["state"]
-                    )
-                    tmp = tmp.with_columns(pl.all().exclude("zipcode").cast(pl.Int64))
-                    self.conn.sql("INSERT INTO 'DP03Table' BY NAME SELECT * FROM tmp")
-                    logging.info(f"succesfully inserting {_year}")
-                except:
-                    logging.warning(f"The ACS for {_year} is not availabe")
-                    continue
+                logging.info(f"pulling {_year} data")
+                tmp = self.pull_query(
+                    params=[
+                        "DP03_0001E",
+                        "DP03_0008E",
+                        "DP03_0009E",
+                        "DP03_0014E",
+                        "DP03_0016E",
+                        "DP03_0019E",
+                        "DP03_0025E",
+                        "DP03_0051E",
+                        "DP03_0052E",
+                        "DP03_0053E",
+                        "DP03_0054E",
+                        "DP03_0055E",
+                        "DP03_0056E",
+                        "DP03_0057E",
+                        "DP03_0058E",
+                        "DP03_0059E",
+                        "DP03_0060E",
+                        "DP03_0061E",
+                        "DP03_0066E",
+                        "DP03_0074E",
+                    ],
+                    year=_year,
+                )
+                tmp = tmp.rename(
+                    {
+                        "dp03_0001e": "total_population",
+                        "dp03_0008e": "in_labor_force",
+                        "dp03_0009e": "unemployment",
+                        "dp03_0014e": "own_children6",
+                        "dp03_0016e": "own_children17",
+                        "dp03_0019e": "commute_car",
+                        "dp03_0025e": "commute_time",
+                        "dp03_0051e": "total_house",
+                        "dp03_0052e": "inc_less_10k",
+                        "dp03_0053e": "inc_10k_15k",
+                        "dp03_0054e": "inc_15k_25k",
+                        "dp03_0055e": "inc_25k_35k",
+                        "dp03_0056e": "inc_35k_50k",
+                        "dp03_0057e": "inc_50k_75k",
+                        "dp03_0058e": "inc_75k_100k",
+                        "dp03_0059e": "inc_100k_150k",
+                        "dp03_0060e": "inc_150k_200k",
+                        "dp03_0061e": "inc_more_200k",
+                        "dp03_0066e": "with_social_security",
+                        "dp03_0074e": "food_stamp",
+                    }
+                )
+                tmp = tmp.rename({"zip code tabulation area": "zipcode"}).drop(
+                    ["state"]
+                )
+                self.conn.sql("INSERT INTO 'DP03Table' BY NAME SELECT * FROM tmp")
+                logging.info(f"succesfully inserting {_year}")
+                # except:
+                #     logging.warning(f"The ACS for {_year} is not availabe")
+                #     continue
             else:
                 logging.info(f"data for {_year} is in the database")
                 continue
@@ -224,3 +281,12 @@ class DataReg(cleanData):
                 f"The zipstable is empty inserting {self.saving_dir}external/cousub.zip"
             )
         return self.conn.sql("SELECT * FROM zipstable;").df()
+
+    def calculate_spatial_lag(self, df, w, column):
+        # Reshape y to match the number of rows in the dataframe
+        y = df[column].values.reshape(-1, 1)
+
+        # Apply spatial lag
+        spatial_lag = weights.lag_spatial(w, y)
+
+        return spatial_lag

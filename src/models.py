@@ -185,6 +185,12 @@ def init_dp03_table(db_path: str) -> None:
             year INTEGER,
             zipcode VARCHAR(5),
             total_population INTEGER,
+            in_labor_force INTEGER,
+            unemployment INTEGER,
+            own_children6 INTEGER,
+            own_children17 INTEGER,
+            commute_car INTEGER,
+            commute_time FLOAT,
             total_house INTEGER,
             inc_less_10k INTEGER,
             inc_10k_15k INTEGER,
@@ -195,7 +201,9 @@ def init_dp03_table(db_path: str) -> None:
             inc_75k_100k INTEGER,
             inc_100k_150k INTEGER,
             inc_150k_200k INTEGER,
-            inc_more_200k INTEGER
+            inc_more_200k INTEGER,
+            with_social_security INTEGER,
+            food_stamp INTEGER
             );
         """
     )
