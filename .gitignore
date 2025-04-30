@@ -178,3 +178,5 @@ data/external/
 assets/
 aux/
 *.gz
+
+*.csv
