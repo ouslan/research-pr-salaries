@@ -79,6 +79,9 @@ class DataReg(cleanData):
             k_index=pl.col("min_wage") / pl.col("mw_industry")
         )
         df_qcew = df_qcew.filter(pl.col("zipcode") != "00611")
+        df_qcew = df_qcew.filter(pl.col("zipcode") != "00636")
+        df_qcew = df_qcew.filter(pl.col("zipcode") != "20121")
+        df_qcew = df_qcew.filter(pl.col("zipcode") != "20123")
 
         return df_qcew
 
@@ -105,23 +108,10 @@ class DataReg(cleanData):
         gdf = gdf.sort_values(by=["zipcode", "year", "qtr"]).reset_index(drop=True)
         columns = [
             "total_population",
-            "in_labor_force",
-            "unemployment",
             "own_children6",
             "own_children17",
             "commute_car",
-            "commute_time",
             "total_house",
-            "inc_less_10k",
-            "inc_10k_15k",
-            "inc_15k_25k",
-            "inc_25k_35k",
-            "inc_35k_50k",
-            "inc_50k_75k",
-            "inc_75k_100k",
-            "inc_100k_150k",
-            "inc_150k_200k",
-            "inc_more_200k",
             "with_social_security",
             "food_stamp",
         ]
@@ -130,13 +120,13 @@ class DataReg(cleanData):
                 lambda group: group.interpolate(method="cubic")
             )
 
-        gdf = gdf[(gdf["year"] >= 2012) & (gdf["year"] < 2019)]
+        gdf = gdf[(gdf["year"] >= 2012) & (gdf["year"] < 2024)]
 
         spatial_lag_results = []
-        w = weights.Queen.from_dataframe(gdf[(gdf["year"] == 2012) & (gdf["qtr"] == 1)])
+        w = weights.Queen.from_dataframe(gdf[(gdf["year"] == 2012) & (gdf["qtr"] == 4)])
 
         # Assuming `df` has 'year' and 'quarter' columns for grouping
-        for year in range(2012, 2022):
+        for year in range(2012, 2024):
             for qtr in range(1, 5):
                 group_df = gdf[(gdf["year"] == year) & (gdf["qtr"] == qtr)].reset_index(
                     drop=True
@@ -157,6 +147,7 @@ class DataReg(cleanData):
 
         # Concatenate all the results back together
         gdf = pd.concat(spatial_lag_results)
+        # gdf = gdf[(gdf["year"] >= 2012) & (gdf["year"] < 2023)]
         return gdf
 
     def spatial_data(self) -> gpd.GeoDataFrame:
