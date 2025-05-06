@@ -1,3 +1,4 @@
+
 [submodule "src/jp_qcew"]
 	path = src/jp_qcew
-	url = git@github.com:ouslan/jp-QCEW.git
+	url = https://github.com/gitinference/jp-qcew.git
