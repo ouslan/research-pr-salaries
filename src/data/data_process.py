@@ -22,12 +22,44 @@ class DataReg(cleanData):
     ):
         super().__init__(saving_dir, database_file, log_file)
 
+    def base_spatial_data(self) -> pl.DataFrame:
+        df_qcew = self.base_data()
+
+        df_qcew = df_qcew.group_by(["year", "qtr", "zipcode"]).agg(
+            mw_industry=pl.col("wages_employee").mean(),
+            total_employment=pl.col("total_employment").mean(),
+        )
+        df_qcew = df_qcew.with_columns(
+            min_wage=pl.when((pl.col("year") >= 2002) & (pl.col("year") < 2010))
+            .then(5.15 * 65 * 8)
+            .when((pl.col("year") >= 2010) & (pl.col("year") < 2023))
+            .then(7.25 * 65 * 8)
+            .when(pl.col("year") == 2023)
+            .then(8.5 * 65 * 8)
+            .when(pl.col("year") == 2024)
+            .then(10.5 * 65 * 8)
+            .otherwise(-1)
+        )
+        df_qcew = df_qcew.with_columns(
+            k_index=pl.col("min_wage") / pl.col("mw_industry")
+        )
+        df_qcew = df_qcew.filter(pl.col("zipcode") != "00611")
+        df_qcew = df_qcew.filter(pl.col("zipcode") != "00636")
+        df_qcew = df_qcew.filter(pl.col("zipcode") != "20121")
+        df_qcew = df_qcew.filter(pl.col("zipcode") != "20123")
+
+        return df_qcew
+
+    def regular_data(self):
+        df_qcew = self.base_data()
+        return df_qcew
+
     def base_data(self) -> pl.DataFrame:
         if "qcewtable" not in self.conn.sql("SHOW TABLES;").df().get("name").tolist():
             self.make_qcew_dataset()
 
         df_qcew = self.conn.sql(
-            "SELECT year,qtr,phys_addr_5_zip,first_month_employment,total_wages,second_month_employment,third_month_employment,naics_code FROM qcewtable"
+            "SELECT year,qtr,phys_addr_5_zip,ein,first_month_employment,total_wages,second_month_employment,third_month_employment,naics_code FROM qcewtable"
         ).pl()
         df_qcew = df_qcew.rename({"phys_addr_5_zip": "zipcode"})
         df_qcew = df_qcew.filter(
@@ -60,33 +92,10 @@ class DataReg(cleanData):
             wages_employee=pl.col("total_wages") / pl.col("total_employment"),
             sector=pl.col("naics_code").str.slice(0, 2),
         )
-        df_qcew = df_qcew.group_by(["year", "qtr", "zipcode"]).agg(
-            mw_industry=pl.col("wages_employee").mean(),
-            total_employment=pl.col("total_employment").mean(),
-        )
-        df_qcew = df_qcew.with_columns(
-            min_wage=pl.when((pl.col("year") >= 2002) & (pl.col("year") < 2010))
-            .then(5.15 * 65 * 8)
-            .when((pl.col("year") >= 2010) & (pl.col("year") < 2023))
-            .then(7.25 * 65 * 8)
-            .when(pl.col("year") == 2023)
-            .then(8.5 * 65 * 8)
-            .when(pl.col("year") == 2024)
-            .then(10.5 * 65 * 8)
-            .otherwise(-1)
-        )
-        df_qcew = df_qcew.with_columns(
-            k_index=pl.col("min_wage") / pl.col("mw_industry")
-        )
-        df_qcew = df_qcew.filter(pl.col("zipcode") != "00611")
-        df_qcew = df_qcew.filter(pl.col("zipcode") != "00636")
-        df_qcew = df_qcew.filter(pl.col("zipcode") != "20121")
-        df_qcew = df_qcew.filter(pl.col("zipcode") != "20123")
-
         return df_qcew
 
-    def make_dataset(self):
-        df_qcew = self.base_data()
+    def make_spatial_dataset(self):
+        df_qcew = self.base_spatial_data()
         gdf = self.spatial_data()
         dp03_df = self.pull_dp03()
         dp03_df = dp03_df.with_columns(qtr=4)

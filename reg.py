@@ -28,7 +28,9 @@ model = bmb.Model(
     data,
     dropna=True,
 )
-results = model.fit(target_accept=0.99, draws=1000, cores=15)
+results = model.fit(
+    target_accept=0.99, draws=1000, cores=15)
+)
 
 az.plot_trace(
     results,
