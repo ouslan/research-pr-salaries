@@ -2,44 +2,39 @@ from src.data.data_process import DataReg
 import arviz as az
 import bambi as bmb
 import matplotlib.pyplot as plt
-from linearmodels.panel import RandomEffects, PanelOLS
-
+import polars as pl
 
 dr = DataReg()
 
-df = dr.make_dataset()
+df_qcew = dr.regular_data()
 
-data = df.copy()
+df_qcew.group_by(["year", "qtr", "zipcode", "ein"]).agg(
+           total_employment=pl.col("total_employment").sum(),
+            total_wages=pl.col("total_wages").sum()
+        )
+tmp = pl.from_pandas(dr.make_spatial_dataset().drop("geometry", axis=1))
+
+master = df_qcew.join(tmp,on=["year","qtr","zipcode"], how="inner", validate="m:1")
+
+data = master.to_pandas().copy()
 data["date2"] = data["year"] * 10 + data["qtr"]
-data["date"] = data["date2"].astype("category")
-data["zipcode"] = data["zipcode"].astype("category")
+data['date'] = data['date2'].astype('category')
+data['zipcode'] = data['zipcode'].astype('category')
+data['ein'] = data['ein'].astype('category')
 
-data_panel = data.set_index(["zipcode", "date2"])
-data_panel = data_panel.drop("geometry", axis=1)
-model = RandomEffects.from_formula(
-    "total_employment ~ k_index + w_k_index + w_employment + own_children6 + own_children17 + commute_car + food_stamp + with_social_security",
-    data=data_panel,
-)
-results = model.fit(cov_type="clustered", cluster_entity=True)
-print(results.summary)
 
 model = bmb.Model(
-    "total_employment ~ 0 + k_index + w_k_index + w_employment + own_children6 + own_children17  + commute_car + food_stamp + with_social_security + date + zipcode",
-    data,
-    dropna=True,
+    "total_employment ~ 0 + k_index + own_children6 + own_children17  + commute_car + food_stamp + with_social_security",
+    data, dropna=True,
 )
-results = model.fit(
-    target_accept=0.99, draws=1000, cores=15)
-)
+results = model.fit(sample_kwargs={"nuts_sampler" :"blackjax"},cores=15)
 
 az.plot_trace(
     results,
     compact=True,
 )
-plt.savefig("data.png")
+
+plt.savefig("trace_plot.png", format="png")
 
 res = az.summary(results)
-res_filtered = res.loc[
-    res.index.str.contains("k_index|with_social_security|w_employment")
-]
-print(res_filtered)
+res.to_csv("results.csv")

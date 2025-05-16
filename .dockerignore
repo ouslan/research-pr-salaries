@@ -1,0 +1,39 @@
+
+# Ignore Python bytecode files
+*.pyc
+*.pyo
+*.pyd
+__pycache__
+
+# Ignore virtual environments
+venv/
+env/
+.venv/
+
+# Ignore Dockerfile and Docker-related files (optional)
+Dockerfile
+.dockerignore
+
+# Ignore version control files
+.git
+.gitignore
+
+# Ignore logs
+*.log
+
+# Ignore temporary or backup files
+*.bak
+*.swp
+*~
+
+# Ignore test directories or files (if any)
+tests/
+
+# Ignore any other local or IDE-specific files (optional)
+.vscode/
+.idea/
+
+# Ignore any large datasets or build files not needed in the container
+data/
+*.tar.gz
+*.zip

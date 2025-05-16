@@ -1,0 +1,23 @@
+services:
+  rocm_jax:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rocm_jax
+    network_mode: host
+    devices:
+      - "/dev/kfd"
+      - "/dev/dri"
+    ipc: host
+    shm_size: '64G'
+    group_add:
+      - video
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    volumes:
+      - .:/jax_dir
+    stdin_open: true    # Equivalent to -it (Interactive shell)
+    tty: true           # Equivalent to -it (allocate TTY)
+    command: /bin/bash  # Run bash inside the container
