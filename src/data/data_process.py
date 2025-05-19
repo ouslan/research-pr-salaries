@@ -59,7 +59,7 @@ class DataReg(cleanData):
             self.make_qcew_dataset()
 
         df_qcew = self.conn.sql(
-            "SELECT year,qtr,phys_addr_5_zip,ein,first_month_employment,total_wages,second_month_employment,third_month_employment,naics_code FROM qcewtable"
+            "SELECT year,qtr,phys_addr_5_zip,ui_addr_5_zip,mail_addr_5_zip,ein,first_month_employment,total_wages,second_month_employment,third_month_employment,naics_code FROM qcewtable"
         ).pl()
         df_qcew = df_qcew.rename({"phys_addr_5_zip": "zipcode"})
         df_qcew = df_qcew.filter(
