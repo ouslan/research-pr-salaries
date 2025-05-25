@@ -14,9 +14,9 @@ dr = DataReg()
 
 def main() -> None:
     naics_code = [
-        "11",
+        # "11",
         "21",
-        # "22",
+        "22",
         # "23",
         # "31-33",
         # "42",
@@ -33,7 +33,7 @@ def main() -> None:
         # "72-accommodation",
         # "72-food",
         # "81",
-        # "92"
+        # "92",
     ]
     for naics in naics_code:
         data = dr.regular_data(naics=naics)
