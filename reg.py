@@ -46,7 +46,7 @@ def main() -> None:
             dropna=True,
         )
         results = model.fit(sample_kwargs={"nuts_sampler": "blackjax"}, cores=15)
-        az.to_netcdf(results, f"results_pr_model_{naics}.nc")
+        az.to_netcdf(results, f"data/processed/results_pr_model_{naics}.nc")
 
         # Foreign regression
         data_pr = data[data["foreign"] == 1]
@@ -56,7 +56,7 @@ def main() -> None:
             dropna=True,
         )
         results = model.fit(sample_kwargs={"nuts_sampler": "blackjax"}, cores=15)
-        az.to_netcdf(results, f"results_foreign_model_{naics}.nc")
+        az.to_netcdf(results, f"data/processed/results_foreign_model_{naics}.nc")
 
         dr.notify(
             url=str(os.environ.get("URL")),
