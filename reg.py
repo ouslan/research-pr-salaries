@@ -4,7 +4,10 @@ import arviz as az
 import bambi as bmb
 from dotenv import load_dotenv
 import os
+import warnings
 
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
 load_dotenv()
 
 az.style.use("arviz-darkgrid")
