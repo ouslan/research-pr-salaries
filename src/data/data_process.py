@@ -365,3 +365,10 @@ class DataReg(cleanData):
         spatial_lag = weights.lag_spatial(w, y)
 
         return spatial_lag
+
+    def notify(self, url: str, auth: str, msg: str):
+        requests.post(
+            url,
+            data=msg,
+            headers={"Authorization": auth},
+        )

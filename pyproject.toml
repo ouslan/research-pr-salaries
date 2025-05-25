@@ -17,6 +17,7 @@ dependencies = [
   "linearmodels>=6.1",
   "pyarrow>=20.0.0",
   "ruff>=0.11.10",
+  "python-dotenv>=1.1.0",
 ]
 
 [dependency-groups]
