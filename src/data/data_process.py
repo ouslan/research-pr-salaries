@@ -65,6 +65,11 @@ class DataReg(cleanData):
                 (pl.col("naics_code").str.starts_with("44"))
                 | (pl.col("naics_code").str.starts_with("45"))
             )
+        elif naics == "48-49":
+            df_qcew = df_qcew.filter(
+                (pl.col("naics_code").str.starts_with("48"))
+                | (pl.col("naics_code").str.starts_with("49"))
+            )
         elif naics == "72-accommodation":
             df_qcew = df_qcew.filter(
                 (pl.col("naics_code").str.starts_with("7211"))
