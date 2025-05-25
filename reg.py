@@ -6,37 +6,36 @@ from dotenv import load_dotenv
 import os
 import warnings
 
-warnings.filterwarnings("ignore", category=FutureWarning)
-warnings.filterwarnings("ignore", category=UserWarning)
-load_dotenv()
-
-az.style.use("arviz-darkgrid")
-
-dr = DataReg()
-
 
 def main() -> None:
+    warnings.filterwarnings("ignore", category=FutureWarning)
+    warnings.filterwarnings("ignore", category=UserWarning)
+    load_dotenv()
+
+    az.style.use("arviz-darkgrid")
+
+    dr = DataReg()
     naics_code = [
-        # "11",
+        "11",
         "21",
         "22",
-        # "23",
-        # "31-33",
-        # "42",
-        # "44-45",
-        # "48-49",
-        # "51",
-        # "52",
-        # "54",
-        # "55",
-        # "56",
-        # "61",
-        # "62",
-        # "71",
-        # "72-accommodation",
-        # "72-food",
-        # "81",
-        # "92",
+        "23",
+        "31-33",
+        "42",
+        "44-45",
+        "48-49",
+        "51",
+        "52",
+        "54",
+        "55",
+        "56",
+        "61",
+        "62",
+        "71",
+        "72-accommodation",
+        "72-food",
+        "81",
+        "92",
     ]
     for naics in naics_code:
         data = dr.regular_data(naics=naics)
