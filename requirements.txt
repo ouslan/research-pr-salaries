@@ -12,6 +12,7 @@ arviz==0.21.0
     # via
     #   pr-salaries (pyproject.toml)
     #   bambi
+    #   nutpie
     #   pymc
 asciitree==0.3.3
     # via zarr
@@ -315,6 +316,8 @@ numpy==2.2.5
     #   zarr
 numpyro==0.18.0
     # via pr-salaries (pyproject.toml)
+nutpie==0.14.3
+    # via pr-salaries (pyproject.toml)
 opt-einsum==3.4.0
     # via jax
 packaging==25.0
@@ -351,6 +354,7 @@ pandas==2.2.3
     #   linearmodels
     #   mapclassify
     #   momepy
+    #   nutpie
     #   pointpats
     #   pymc
     #   pysal
@@ -385,7 +389,9 @@ psutil==7.0.0
 pulp==3.1.1
     # via spopt
 pyarrow==20.0.0
-    # via pr-salaries (pyproject.toml)
+    # via
+    #   pr-salaries (pyproject.toml)
+    #   nutpie
 pygments==2.19.1
     # via rich
 pyhdfe==0.2.0
@@ -589,6 +595,7 @@ wrapt==1.17.2
 xarray==2025.4.0
     # via
     #   arviz
+    #   nutpie
     #   xarray-datatree
     #   xarray-einstats
 xarray-datatree==0.0.14

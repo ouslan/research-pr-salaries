@@ -12,7 +12,7 @@ from src.data.data_process import DataReg
 import multiprocessing
 import numpyro
 import numpyro.util
-
+import nutpie
 
 # ✅ Explicitly tell JAX to use the GPU (ROCm backend)
 os.environ["JAX_PLATFORM_NAME"] = "gpu"
@@ -32,7 +32,7 @@ os.environ["XLA_FLAGS"] = (
 # ✅ Print diagnostics
 print("JAX is using:", jax.devices())
 print(f"Available CPU cores: {num_cores}")
-print("NumPyro backend platform:", numpyro.util.get_platform())
+print("NumPyro backend platform:", numpyro.util.set_platform())
 
 
 def main() -> None:
@@ -80,7 +80,7 @@ def main() -> None:
                 )
                 results = model.fit(
                     sample_kwargs={
-                        "nuts_sampler": "numpyro",
+                        "nuts_sampler": "nutpie",
                         "draws": 500,
                         "tune": 500,
                         "target_accept": 0.8,
