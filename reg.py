@@ -47,9 +47,9 @@ def main() -> None:
             result_path = f"data/processed/results_{i}_{naics}.nc"
             if not os.path.exists(result_path):
                 if i == "foreign":
-                    data_pr = data[data["foreign"] == 0]
-                else:
                     data_pr = data[data["foreign"] == 1]
+                else:
+                    data_pr = data[data["foreign"] == 0]
 
                 model = bmb.Model(
                     "log_total_employment ~ 0 + date + log_k_index + own_children6 + own_children17 + commute_car + food_stamp + with_social_security",
