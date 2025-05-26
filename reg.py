@@ -1,4 +1,5 @@
 import logging
+import jax
 import os
 import warnings
 from pdb import main
@@ -11,6 +12,9 @@ from src.data.data_process import DataReg
 
 
 def main() -> None:
+    print("JAX devices:", jax.devices())
+    os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+    os.environ["JAX_PLATFORM_NAME"] = "gpu"
     warnings.filterwarnings("ignore", category=FutureWarning)
     warnings.filterwarnings("ignore", category=UserWarning)
     load_dotenv()
