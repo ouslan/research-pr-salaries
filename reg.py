@@ -9,21 +9,6 @@ import bambi as bmb
 from dotenv import load_dotenv
 
 from src.data.data_process import DataReg
-import multiprocessing
-import numpyro
-
-os.environ["JAX_PLATFORM_NAME"] = "gpu"
-os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.95"
-
-num_cores = multiprocessing.cpu_count()
-
-numpyro.set_platform("gpu")
-
-print("JAX devices:", jax.devices())
-print("JAX backend:", jax.default_backend())
-print("NumPyro platform:", numpyro.get_platform())
-print(f"Available CPU cores: {num_cores}")
 
 
 def main() -> None:
@@ -67,13 +52,14 @@ def main() -> None:
                     data_pr = data[data["foreign"] == 1]
 
                 model = bmb.Model(
-                    "log_total_employment ~ 0 + date + ein + log_k_index + own_children6 + own_children17 + commute_car + food_stamp + with_social_security",
+                    "log_total_employment ~ 0 + date + log_k_index + own_children6 + own_children17 + commute_car + food_stamp + with_social_security",
                     data_pr,
                     dropna=True,
                 )
 
                 results = model.fit(
                     sample_kwargs={
+                        "nuts_sampler": "blackjax_nuts",
                         "draws": 500,
                         "tune": 500,
                         "target_accept": 0.8,
