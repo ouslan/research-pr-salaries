@@ -42,10 +42,9 @@ def main() -> None:
         for i in ["foreign", "local"]:
             if not os.path.exists(f"results_{i}_{naics}.nc"):
                 if i == "foreign":
-                    data_pr = data[data["local"] == 0]
+                    data_pr = data[data["foreign"] == 0]
                 else:
                     data_pr = data[data["foreign"] == 1]
-                data_pr = data[data["foreign"] == 0]
                 model = bmb.Model(
                     "log_total_employment ~ 0 + date + ein + log_k_index + own_children6 + own_children17 + commute_car + food_stamp + with_social_security",
                     data_pr,
