@@ -18,6 +18,7 @@ services:
       - seccomp=unconfined
     volumes:
       - .:/jax_dir
+      - ./data:/app/data
     stdin_open: true
     tty: true
     command: /bin/bash
