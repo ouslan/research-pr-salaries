@@ -74,7 +74,15 @@ def main() -> None:
                     data_pr,
                     dropna=True,
                 )
-                results = model.fit(sample_kwargs={"nuts_sampler": "numpyro"})
+                results = model.fit(
+                    sample_kwargs={
+                        "nuts_sampler": "numpyro",
+                        "draws": 500,
+                        "tune": 500,
+                        "target_accept": 0.8,
+                    },
+                    cores=15,
+                )
                 az.to_netcdf(results, f"data/processed/results_{i}_{naics}.nc")
                 dr.notify(
                     url=str(os.environ.get("URL")),
