@@ -10,6 +10,9 @@ from dotenv import load_dotenv
 
 from src.data.data_process import DataReg
 import multiprocessing
+import numpyro
+import numpyro.util
+
 
 # ✅ Explicitly tell JAX to use the GPU (ROCm backend)
 os.environ["JAX_PLATFORM_NAME"] = "gpu"
@@ -29,6 +32,7 @@ os.environ["XLA_FLAGS"] = (
 # ✅ Print diagnostics
 print("JAX is using:", jax.devices())
 print(f"Available CPU cores: {num_cores}")
+print("NumPyro backend platform:", numpyro.util.get_platform())
 
 
 def main() -> None:
