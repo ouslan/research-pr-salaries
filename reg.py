@@ -19,26 +19,26 @@ def main() -> None:
 
     dr = DataReg()
     naics_code = [
-        "11",
+        # "11",
         "21",
         "22",
-        "23",
-        "31-33",
-        "42",
-        "44-45",
-        "48-49",
-        "51",
-        "52",
-        "54",
-        "55",
-        "56",
-        "61",
-        "62",
-        "71",
-        "72-accommodation",
-        "72-food",
-        "81",
-        "92",
+        # "23",
+        # "31-33",
+        # "42",
+        # "44-45",
+        # "48-49",
+        # "51",
+        # "52",
+        # "54",
+        # "55",
+        # "56",
+        # "61",
+        # "62",
+        # "71",
+        # "72-accommodation",
+        # "72-food",
+        # "81",
+        # "92",
     ]
     for naics in naics_code:
         data = dr.regular_data(naics=naics)
@@ -53,9 +53,7 @@ def main() -> None:
                     data_pr,
                     dropna=True,
                 )
-                results = model.fit(
-                    sample_kwargs={"nuts_sampler": "blackjax"}, cores=15
-                )
+                results = model.fit(sample_kwargs={"nuts_sampler": "numpyro"})
                 az.to_netcdf(results, f"data/processed/results_{i}_{naics}.nc")
                 dr.notify(
                     url=str(os.environ.get("URL")),
