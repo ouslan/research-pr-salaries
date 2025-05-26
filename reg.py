@@ -9,12 +9,29 @@ import bambi as bmb
 from dotenv import load_dotenv
 
 from src.data.data_process import DataReg
+import multiprocessing
+
+# ✅ Explicitly tell JAX to use the GPU (ROCm backend)
+os.environ["JAX_PLATFORM_NAME"] = "gpu"
+
+# ✅ Control JAX GPU memory behavior (optional tuning)
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = (
+    "false"  # or "true" for full preallocation
+)
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.95"
+
+# ✅ Maximize CPU parallelism for JAX (relevant for CPU fallbacks or preprocessing)
+num_cores = multiprocessing.cpu_count()
+os.environ["XLA_FLAGS"] = (
+    f"--xla_cpu_multi_thread_eigen=true intra_op_parallelism_threads={num_cores}"
+)
+
+# ✅ Print diagnostics
+print("JAX is using:", jax.devices())
+print(f"Available CPU cores: {num_cores}")
 
 
 def main() -> None:
-    print("JAX devices:", jax.devices())
-    os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
-    os.environ["JAX_PLATFORM_NAME"] = "gpu"
     warnings.filterwarnings("ignore", category=FutureWarning)
     warnings.filterwarnings("ignore", category=UserWarning)
     load_dotenv()
