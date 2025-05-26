@@ -1,10 +1,13 @@
+import logging
+import os
+import warnings
 from pdb import main
-from src.data.data_process import DataReg
+
 import arviz as az
 import bambi as bmb
 from dotenv import load_dotenv
-import os
-import warnings
+
+from src.data.data_process import DataReg
 
 
 def main() -> None:
@@ -16,26 +19,26 @@ def main() -> None:
 
     dr = DataReg()
     naics_code = [
-        # "11",
+        "11",
         "21",
         "22",
-        # "23",
-        # "31-33",
-        # "42",
-        # "44-45",
-        # "48-49",
-        # "51",
-        # "52",
-        # "54",
-        # "55",
-        # "56",
-        # "61",
-        # "62",
-        # "71",
-        # "72-accommodation",
-        # "72-food",
-        # "81",
-        # "92",
+        "23",
+        "31-33",
+        "42",
+        "44-45",
+        "48-49",
+        "51",
+        "52",
+        "54",
+        "55",
+        "56",
+        "61",
+        "62",
+        "71",
+        "72-accommodation",
+        "72-food",
+        "81",
+        "92",
     ]
     for naics in naics_code:
         data = dr.regular_data(naics=naics)
@@ -61,7 +64,9 @@ def main() -> None:
                 )
 
             else:
-                print("yeas")
+                logging.info(
+                    f"file data/processed/results_{i}_{naics}.nc already exists"
+                )
                 continue
 
 
