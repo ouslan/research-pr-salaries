@@ -40,7 +40,7 @@ def main() -> None:
     for naics in naics_code:
         data = dr.regular_data(naics=naics)
         for i in ["foreign", "local"]:
-            if not os.path.exists(f"results_{i}_{naics}.nc"):
+            if not os.path.exists(f"data/processed/results_{i}_{naics}.nc"):
                 if i == "foreign":
                     data_pr = data[data["foreign"] == 0]
                 else:
