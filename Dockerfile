@@ -1,21 +1,18 @@
-# Use the ROCm JAX base image
-FROM rocm/jax-community:latest
+# Use the official Python 3.10 image as the base
+FROM python:3.10
 
-# Set environment variables for ROCm (optional, adjust if necessary)
-ENV PATH=/opt/rocm/bin:$PATH
-ENV LD_LIBRARY_PATH=/opt/rocm/lib:$LD_LIBRARY_PATH
-
-# Set working directory
+# Set the working directory inside the container
 WORKDIR /app
 
-# Copy requirements.txt into the container
+# Copy the requirements.txt file into the container
 COPY requirements.txt .
 
 # Install Python dependencies from requirements.txt
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy the rest of your application code into the container
 COPY . .
 
+# Set the default command to run your application
+CMD ["python", "reg.py"]
 
-# Command to run your app (if needed)
-CMD ["python", "app.py"]
