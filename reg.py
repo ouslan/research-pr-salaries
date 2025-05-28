@@ -51,8 +51,9 @@ def main() -> None:
                 else:
                     data_pr = data[data["foreign"] == 0]
 
+                print(f"Runnung {naics} for {i}")
                 model = bmb.Model(
-                    "log_total_employment ~ 0 + date + log_k_index + own_children6 + own_children17 + commute_car + food_stamp + with_social_security",
+                    "log_total_employment ~ 0 + ein + date + log_k_index + own_children6 + own_children17 + commute_car + food_stamp + with_social_security",
                     data_pr,
                     dropna=True,
                 )
@@ -75,6 +76,7 @@ def main() -> None:
                     msg=f"Successfully completed regression for NAICS {naics} for {i}",
                 )
             else:
+                print(f"Skipping {naics} for {i}")
                 logging.info(f"{result_path} already exists")
                 continue
 
