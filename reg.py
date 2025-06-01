@@ -58,13 +58,10 @@ def main() -> None:
                 )
 
                 results = model.fit(
-                    sample_kwargs={
-                        "nuts_sampler": "blackjax_nuts",
-                        "draws": 500,
-                        "tune": 500,
-                        "target_accept": 0.8,
-                    },
-                    cores=15,
+                    inference_method="nutpie",
+                    sample_kwargs={"draws": 500, "tune": 500, "target_accept": 0.8},
+                    cores=10,
+                    chains=10,
                 )
 
                 az.to_netcdf(results, result_path)

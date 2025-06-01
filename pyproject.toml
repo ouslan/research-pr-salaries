@@ -20,7 +20,11 @@ dependencies = [
   "python-dotenv>=1.1.0",
   "numpyro>=0.18.0",
   "nutpie>=0.14.3",
+  "bayeux-ml>=0.1.15",
 ]
 
 [dependency-groups]
 dev = ["jupyter>=1.1.1", "nutpie>=0.14.3", "pre-commit>=4.2.0", "pynvim>=0.5.2"]
+gpu = [
+    "jax[rocm]>=0.5.0",
+]
