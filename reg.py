@@ -1,5 +1,4 @@
 import logging
-import jax
 import os
 import warnings
 from pdb import main
@@ -51,7 +50,7 @@ def main() -> None:
                 else:
                     data_pr = data[data["foreign"] == 0]
 
-                print(f"Runnung {naics} for {i}")
+                print(f"Running {naics} for {i}")
                 model = bmb.Model(
                     "log_total_employment ~ 0 + ein + date + log_k_index + own_children6 + own_children17 + commute_car + food_stamp + with_social_security",
                     data_pr,
