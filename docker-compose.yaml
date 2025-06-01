@@ -4,5 +4,26 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: rocm_jax
+    network_mode: host
+    devices:
+      - "/dev/kfd"
+      - "/dev/dri"
+    ipc: host
+    shm_size: '64G'
+    group_add:
+      - video
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
     volumes:
+      - .:/jax_dir
       - ./data:/app/data
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+
+    # ✅ Environment variables for JAX ROCm GPU
+    environment:
+      - XLA_PYTHON_CLIENT_PREALLOCATE=false
+      - JAX_PLATFORM_NAME=gpu
