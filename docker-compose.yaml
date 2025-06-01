@@ -32,5 +32,5 @@ services:
 
     # ✅ Environment variables for JAX ROCm GPU
     environment:
-      - XLA_PYTHON_CLIENT_PREALLOCATE=false
+      -  XLA_PYTHON_CLIENT_MEM_FRACTION=0.8
       - JAX_PLATFORM_NAME=gpu
