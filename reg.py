@@ -15,40 +15,46 @@ def main() -> None:
     warnings.filterwarnings("ignore", category=UserWarning)
     load_dotenv()
 
-    az.style.use("arviz-darkgrid")
-
     dr = DataReg()
 
     naics_code2 = [
         "72-food",
+        "23",
+        "44-45",
+        "52",
+        "54",
+        "56",
+        "62",
+        "81",
     ]
     naics_code = [
+        "72-food",
+        "23",
+        "44-45",
+        "52",
+        "54",
+        "56",
+        "62",
+        "81",
         "11",
         "21",
         "22",
-        "23",
         "31-33",
         "42",
-        "44-45",
         "48-49",
         "51",
-        "52",
-        "54",
         "55",
-        "56",
         "61",
-        "62",
         "71",
         "72-accommodation",
         "72-food",
-        "81",
         "92",
     ]
     for naics in naics_code:
-        data = dr.regular_data(naics=naics)
         for i in ["foreign", "local"]:
             result_path = f"data/processed/results_{i}_{naics}.nc"
             if not os.path.exists(result_path):
+                data = dr.regular_data(naics=naics)
                 if i == "foreign":
                     data_pr = data[data["foreign"] == 1]
                 else:
@@ -95,7 +101,7 @@ def main() -> None:
                 all_traces = []
 
                 model = bmb.Model(
-                    "log_total_employment ~ 0 + date + ein + log_k_index + own_children6 + own_children17 + commute_car + food_stamp + with_social_security",
+                    "log_total_employment ~ (1|ein) + (1|date)+ log_k_index + own_children6 + own_children17 + commute_car + food_stamp + with_social_security",
                     data_pr,
                     dropna=True,
                 )
