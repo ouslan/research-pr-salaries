@@ -18,24 +18,15 @@ def main() -> None:
     dr = DataReg()
 
     naics_code2 = [
-        "72-food",
         "23",
-        "44-45",
+        # "44-45", WARNING: Could not be calculated duo to hardware limitation
         "52",
-        "54",
+        # "54",
         "56",
         "62",
-        "81",
+        "72-food",
     ]
     naics_code = [
-        "72-food",
-        "23",
-        "44-45",
-        "52",
-        "54",
-        "56",
-        "62",
-        "81",
         "11",
         "21",
         "22",
@@ -47,17 +38,18 @@ def main() -> None:
         "61",
         "71",
         "72-accommodation",
-        "72-food",
+        "81",
         "92",
     ]
     for naics in naics_code:
         for i in ["foreign", "local"]:
-            result_path = f"data/processed/results_{i}_{naics}.nc"
+            result_path = f"data/processed/results2_{i}_{naics}.nc"
             if not os.path.exists(result_path):
-                data = dr.regular_data(naics=naics)
                 if i == "foreign":
+                    data = dr.regular_data(naics=naics)
                     data_pr = data[data["foreign"] == 1]
                 else:
+                    data = dr.regular_data(naics=naics)
                     data_pr = data[data["foreign"] == 0]
 
                 print(f"Running {naics} for {i}")
@@ -101,16 +93,16 @@ def main() -> None:
                 all_traces = []
 
                 model = bmb.Model(
-                    "log_total_employment ~ (1|ein) + (1|date)+ log_k_index + own_children6 + own_children17 + commute_car + food_stamp + with_social_security",
+                    "log_total_employment ~ 0 + date + ein + log_k_index + own_children6 + own_children17 + commute_car + food_stamp + with_social_security",
                     data_pr,
                     dropna=True,
                 )
 
-                for batch in range(5):  # 5 batches of 2 chains
+                for batch in range(10):  # 5 batches of 2 chains
                     trace = model.fit(
                         inference_method="nutpie",
                         sample_kwargs={"draws": 500, "tune": 500, "target_accept": 0.8},
-                        chains=2,
+                        chains=1,
                         cores=1,
                         random_seed=787 + batch,
                     )
