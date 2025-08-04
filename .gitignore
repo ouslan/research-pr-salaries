@@ -169,6 +169,7 @@ cython_debug/
 data/processed/
 data/raw/
 data/external/
+data/qcew
 
 # Data files
 *.dta
