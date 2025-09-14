@@ -89,7 +89,30 @@ where:
 	\item $\epsilon_{it}$ is the error term.
 \end{itemize}
 
-\section{Data and Descriptive Statistics}
+\section{Results}
+
+The results indicate a negative and statistically significant relationship between the Kaitz
+Index and employment in Puerto Rico. Additionally, the spillover effects of the Kaitz
+Index on neighboring regions’ employment levels are negative. However, convergence issues
+with the MCMC method for the Kaitz variable make it difficult to quantify the precise
+magnitude of the spillover effects. A small but significant effect of households
+with children under 6 years old on employment was also observed.
+
+\section{Conclusion}
+
+This study found a negative and statistically significant relationship between the Kaitz Index
+and employment in Puerto Rico's ZIP codes, suggesting that higher minimum wages relative to the
+average wage may reduce employment levels. The spatial econometric approach used here also
+highlights spillover effects, indicating that wage policies in one area can influence neighboring
+regions. Future research should explore lagged spatial effects to evaluate whether the historical
+characteristics of neighboring regions significantly influence current employment trends.
+
+\printbibliography
+
+\appendix
+\section*{Appendix A: Supplementary Tables}
+\setcounter{table}{0} % Reset table counter
+\renewcommand{\thetable}{A\arabic{table}} % Label tables as A1, A2, etc.
 
 \begin{table}[H]
 	\centering
@@ -108,21 +131,6 @@ where:
 	\end{tabular}
 	\caption{Descriptive Statistics for Main Variables}
 \end{table}
-
-\section{Results}
-
-The results indicate a negative and statistically significant relationship between the Kaitz
-Index and employment in Puerto Rico. Additionally, the spillover effects of the Kaitz
-Index on neighboring regions’ employment levels are negative. However, convergence issues
-with the MCMC method for the Kaitz variable make it difficult to quantify the precise
-magnitude of the spillover effects. A small but significant effect of households
-with children under 6 years old on employment was also observed.
-
-\begin{figure}[H]
-	\centering
-	\includegraphics[width=0.7\textwidth]{priori.png}
-	\caption{Non-informative Priori used}
-\end{figure}
 
 \begin{table}[H]
 	\centering
@@ -164,19 +172,20 @@ with children under 6 years old on employment was also observed.
 
 \begin{figure}[H]
 	\centering
-	\includegraphics[width=0.8\textwidth]{results.png}
-	\caption{Summary of Regression Results}
+	\begin{minipage}[t]{0.48\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{priori.png}
+		\caption{Non-informative Priori used}
+		\label{fig:priori}
+	\end{minipage}
+	\hfill
+	\begin{minipage}[t]{0.48\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{results.png}
+		\caption{Summary of Regression Results}
+		\label{fig:results}
+	\end{minipage}
 \end{figure}
 
-\section{Conclusion}
-
-This study found a negative and statistically significant relationship between the Kaitz Index
-and employment in Puerto Rico's ZIP codes, suggesting that higher minimum wages relative to the
-average wage may reduce employment levels. The spatial econometric approach used here also
-highlights spillover effects, indicating that wage policies in one area can influence neighboring
-regions. Future research should explore lagged spatial effects to evaluate whether the historical
-characteristics of neighboring regions significantly influence current employment trends.
-
-\printbibliography
 
 \end{document}
