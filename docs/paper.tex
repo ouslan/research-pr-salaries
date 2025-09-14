@@ -1,0 +1,182 @@
+
+% AEJ-Article.tex for AEA last revised 24 July 2025
+\documentclass[AEJ]{AEA}
+
+% Uncomment the next line to use the natbib package with bibtex
+%\usepackage{natbib}
+
+% Uncomment the next line to use the harvard package with bibtex
+%\usepackage[abbr]{harvard}
+\usepackage[backend=biber,style=numeric]{biblatex}
+\addbibresource{references.bib}
+% This command determines the leading (vertical space between lines) in draft mode
+% with 1.5 corresponding to "double" spacing.
+\draftSpacing{1.5}
+\usepackage{graphicx}  % For \includegraphics
+\usepackage{float}  
+\begin{document}
+
+\title{The Association Between the Kaitz Index and Employment in Puerto Rico}
+\shortTitle{Association Between Kaitz Index and Employment}
+\author{Alejandro M. Ouslan\thanks{%
+		Ouslan: University of Puerto Rico, Mayaguez (alejandro.ouslan@upr.edu)}}
+\date{\today}
+\pubMonth{Month}
+\pubYear{Year}
+\pubVolume{Vol}
+\pubIssue{Issue}
+
+\begin{abstract}
+	This study examines the relationship between the Kaitz Index and employment
+	levels in Puerto Rico using panel data at the postal code level.
+	The data covers the period from Q1 2012 to Q4 2023. A Spatial Durbin
+	Model with fixed effects is applied to investigate both the direct effect
+	of the Kaitz Index on employment and potential spatial effects from adjacent
+	regions. The findings largely support existing literature suggesting a
+	negative relationship between the minimum wage and employment.
+	Additionally, despite some convergence issues with the MCMC of the Kaitz
+	variable, the confidence interval indicates a negative spillover effect on
+	neighboring regions’ employment levels.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+
+The minimum wage and its impact on employment are among the most debated topics
+in labor economics, especially in regions with unique economic structures like
+Puerto Rico. Numerous studies have attempted to analyze this relationship,
+yielding diverse results. For example, a meta-analysis by Stanley (2009)
+and Card \& Krueger (1995)  concluded that there is no significant effect
+on employment, while the Federal Reserve's 2012
+\textit{Competitiveness of the Puerto Rican Economy} report emphasized
+the need for policies that focus on employment creation and suggested a
+subminimum wage for young workers under 25. Locally, Hernández (2017)
+found a reduction in total employment following minimum wage increases,
+while Hernández \& Wu (2025) identified differential responses by local versus
+foreign-owned businesses. However, the spatial dynamics of the minimum
+wage—how wage conditions in one region may affect neighboring areas—remain
+underexplored. This paper seeks to fill that gap by analyzing the relationship
+between the Kaitz Index and employment using spatial econometrics.
+
+\subsection{Literature Review}
+
+Castillo (1983) notes that Puerto Rican emigrants to the U.S. often migrate due to unemployment, a condition linked to minimum wage policies. Freeman (1992) found that the imposition of the U.S. minimum wage in Puerto Rico led to an 8\%–10\% reduction in employment. Brown (1988) noted that the U.S. minimum wage altered the earnings distribution in Puerto Rico, creating sharp peaks. Krueger (1994) found a negative relationship between minimum wages and employment using aggregate time series data. In contrast, Caraballo-Cueto (2016) observed a slight positive effect of minimum wages on employment in the short run. Finally, Neumark (2000) found that higher minimum wages are associated with higher unemployment rates across U.S. regions. These studies highlight the complexity of the minimum wage-employment relationship, with results varying by geography, time, and methodology.
+
+\section{Methodology}
+
+The minimum wage data used in this study comes from the FRED database, while employment and average wage data are sourced from the Quarterly Census of Employment and Wages (QCEW) provided by the Department of Labor. The dataset consists of 6,240 observations spanning Q1 2012 to Q4 2023, organized by postal codes in Puerto Rico. Additional data on economic characteristics of the zip codes were obtained from the American Community Survey.
+
+This study employs a Spatial Durbin Model (SDM) with fixed effects to account for spatial dependence between regions. The model allows for the estimation of both direct and indirect effects. The model equation is as follows:
+
+\[
+	K_{it} = \frac{m_t}{\bar{w}_{it}}
+\]
+where:
+\begin{itemize}
+	\item $K_{it}$ is the Kaitz Index in zip code $i$ at time $t$,
+	\item $m_t$ is the minimum wage at time $t$,
+	\item $\bar{w}_{it}$ is the average wage in zip code $i$ during time $t$.
+\end{itemize}
+
+The full Spatial Durbin Model used in this study is specified by the following equation:
+
+\begin{equation}
+	Y_{it} = \alpha + \beta_1 X_{it} + \rho W Y_{it} + \gamma W X_{it} + \epsilon_{it}
+\end{equation}
+
+where:
+\begin{itemize}
+	\item $Y_{it}$ is employment in zip code $i$ at time $t$,
+	\item $X_{it}$ includes the Kaitz Index ($K$), the minimum wage ($M$), and the average wage ($W$),
+	\item $W$ is the spatial weights matrix reflecting adjacency between regions,
+	\item $\rho$ is the spatial autoregressive parameter capturing spatial dependence,
+	\item $\epsilon_{it}$ is the error term.
+\end{itemize}
+
+\section{Data and Descriptive Statistics}
+
+\begin{table}[ht]
+	\centering
+	\begin{tabular}{|l|c|c|}
+		\hline
+		\textbf{Variables}                     & \textbf{Mean} & \textbf{Standard Deviation} \\
+		\hline
+		Kaitz Index                            & 0.72          & 0.21                        \\
+		Total Employment                       & 1520.36       & 26.44                       \\
+		Own Car                                & 3800.25       & 5377.21                     \\
+		Has children under 6                   & 1520.36       & 1178.04                     \\
+		Has children between 6-17              & 3800.25       & 2879.77                     \\
+		Households under the SNAP              & 3741.17       & 2515.99                     \\
+		People with Social Security Disability & 41.36         & 42.86                       \\
+		\hline
+	\end{tabular}
+	\caption{Summary of descriptive statistics for the variables.}
+\end{table}
+
+\section{Results}
+
+The results indicate a negative and statistically significant relationship between the Kaitz Index and employment in Puerto Rico. Additionally, the spillover effects of the Kaitz Index on neighboring regions’ employment levels are negative. However, convergence issues with the MCMC method for the Kaitz variable make it difficult to quantify the precise magnitude of the spillover effects. A small but significant effect of households with children under 6 years old on employment was also observed.
+
+The priors used for this study are non-informative priors.
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.8\textwidth]{priori.png}
+	\caption{Convergence of the implemented methods}
+\end{figure}
+
+\begin{table}[ht]
+	\centering
+	\begin{tabular}{|l|c|c|c|}
+		\hline
+		\textbf{Variables}         & \textbf{Mean} & \textbf{3\% CI (Lower)} & \textbf{3\% CI (Upper)} \\
+		\hline
+		Kaitz Index                & -10.063       & -13.387                 & -6.745                  \\
+		Spatial Kaitz Index        & -1.122        & -1.406                  & -0.844                  \\
+		Own Car                    & 0.000         & -0.001                  & 0.000                   \\
+		Has children under 6       & 0.006         & 0.004                   & 0.007                   \\
+		Has children between 6-17  & 0.000         & -0.001                  & 0.001                   \\
+		Households under the SNAP  & 0.000         & -0.001                  & 0.000                   \\
+		Social Security Disability & 0.002         & -0.012                  & 0.008                   \\
+		Spatial Employment         & -0.001        & 0.000                   & 0.001                   \\
+		\hline
+	\end{tabular}
+	\caption{Summary of regression results (Part 1).}
+\end{table}
+
+\begin{table}[ht]
+	\centering
+	\begin{tabular}{|l|c|}
+		\hline
+		\textbf{Variables}         & \textbf{R-Squared} \\
+		\hline
+		Kaitz Index                & 1.04               \\
+		Spatial Kaitz Index        & 1.23               \\
+		Own Car                    & 1.03               \\
+		Has children under 6       & 1.01               \\
+		Has children between 6-17  & 1.01               \\
+		Households under the SNAP  & 1.04               \\
+		Social Security Disability & 1.00               \\
+		Spatial Employment         & 1.22               \\
+		\hline
+	\end{tabular}
+	\caption{Summary of regression results (Part 2).}
+\end{table}
+
+The results are also summarized in the following graph:
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.8\textwidth]{results.png}
+	\caption{Summary of regression results}
+\end{figure}
+
+\section{Summary and Concluding Remarks}
+
+This study found a negative and statistically significant relationship between the Kaitz Index and employment in Puerto Rico's ZIP codes, suggesting that higher minimum wages relative to the average wage may reduce employment levels. Future research should explore lagged spatial effects to evaluate whether the historical characteristics of neighboring regions significantly influence current employment trends.
+
+
+
+
+\end{document}
