@@ -474,7 +474,7 @@ partd==1.4.2
     # via dask
 patsy==1.0.1
     # via statsmodels
-pillow==11.2.1
+pillow==11.3.0
     # via
     #   bokeh
     #   matplotlib
