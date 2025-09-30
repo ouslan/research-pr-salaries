@@ -1,13 +1,12 @@
 import logging
 import os
-from datetime import datetime
 
 import geopandas as gpd
 import pandas as pd
 import polars as pl
 import requests
-from shapely import wkt
 from pysal.lib import weights
+from shapely import wkt
 
 from ..jp_qcew.src.data.data_process import cleanData
 from ..models import init_dp03_table
@@ -22,12 +21,124 @@ class DataReg(cleanData):
     ):
         super().__init__(saving_dir, database_file, log_file)
 
+    def base_spatial_data(self) -> pl.DataFrame:
+        df_qcew = self.base_data()
+
+        df_qcew = df_qcew.group_by(["year", "qtr", "zipcode"]).agg(
+            mw_industry=pl.col("wages_employee").mean(),
+            total_employment=pl.col("total_employment").mean(),
+        )
+        df_qcew = df_qcew.with_columns(
+            min_wage=pl.when((pl.col("year") >= 2002) & (pl.col("year") < 2010))
+            .then(5.15 * 65 * 8)
+            .when((pl.col("year") >= 2010) & (pl.col("year") < 2023))
+            .then(7.25 * 65 * 8)
+            .when(pl.col("year") == 2023)
+            .then(8.5 * 65 * 8)
+            .when(pl.col("year") == 2024)
+            .then(10.5 * 65 * 8)
+            .otherwise(-1)
+        )
+        df_qcew = df_qcew.with_columns(
+            k_index=pl.col("min_wage") / pl.col("mw_industry")
+        )
+        df_qcew = df_qcew.filter(pl.col("zipcode") != "00611")
+        df_qcew = df_qcew.filter(pl.col("zipcode") != "00636")
+        df_qcew = df_qcew.filter(pl.col("zipcode") != "20121")
+        df_qcew = df_qcew.filter(pl.col("zipcode") != "20123")
+
+        return df_qcew
+
+    def regular_data(self, naics: str):
+        df_qcew = self.base_data().filter(pl.col("year") >= 2012)
+        if naics == "31-33":
+            df_qcew = df_qcew.filter(
+                (pl.col("naics_code").str.starts_with("31"))
+                | (pl.col("naics_code").str.starts_with("32"))
+                | (pl.col("naics_code").str.starts_with("33"))
+            )
+        elif naics == "44-45":
+            df_qcew = df_qcew.filter(
+                (pl.col("naics_code").str.starts_with("44"))
+                | (pl.col("naics_code").str.starts_with("45"))
+            )
+        elif naics == "48-49":
+            df_qcew = df_qcew.filter(
+                (pl.col("naics_code").str.starts_with("48"))
+                | (pl.col("naics_code").str.starts_with("49"))
+            )
+        elif naics == "72-accommodation":
+            df_qcew = df_qcew.filter(
+                (pl.col("naics_code").str.starts_with("7211"))
+                | (pl.col("naics_code").str.starts_with("7212"))
+                | (pl.col("naics_code").str.starts_with("7213"))
+            )
+        elif naics == "72-food":
+            df_qcew = df_qcew.filter(
+                (pl.col("naics_code").str.starts_with("7223"))
+                | (pl.col("naics_code").str.starts_with("7224"))
+                | (pl.col("naics_code").str.starts_with("7225"))
+            )
+        else:
+            df_qcew = df_qcew.filter(pl.col("naics_code").str.starts_with(naics))
+
+        df_qcew = df_qcew.filter(pl.col("ein") != "")
+        pr_zips = self.spatial_data()["zipcode"].to_list()
+
+        df_qcew = df_qcew.with_columns(
+            foreign=pl.when(pl.col("ui_addr_5_zip").is_in(pr_zips)).then(0).otherwise(1)
+        )
+
+        df_qcew = df_qcew.group_by(["year", "qtr", "zipcode", "ein"]).agg(
+            total_employment=pl.col("total_employment").sum(),
+            total_wages=pl.col("total_wages").sum(),
+            foreign=pl.col("foreign").mean(),
+        )
+        df_qcew = df_qcew.filter((pl.col("foreign") == 1) | (pl.col("foreign") == 0))
+
+        # df_qcew = df_qcew.filter(pl.col("year")>= 2020)
+
+        tmp = pl.from_pandas(self.make_spatial_dataset().drop("geometry", axis=1))
+
+        master = df_qcew.join(
+            tmp, on=["year", "qtr", "zipcode"], how="inner", validate="m:1"
+        )
+
+        # List of columns that we want to exclude
+        exclude_columns = ["year", "ein", "zipcode", "qtr", "state"]
+
+        # Get all columns except the excluded ones
+        columns_to_transform = [
+            col for col in master.columns if col not in exclude_columns
+        ]
+
+        # Create a new list of expressions to add log-transformed columns
+        log_columns = [
+            (pl.col(col).log().alias(f"log_{col}")) for col in columns_to_transform
+        ]
+
+        # Add the log-transformed columns to the DataFrame
+        master = master.with_columns(log_columns)
+        master = master.with_columns(k_dummy=pl.col("foreign") * pl.col("log_k_index"))
+
+        data = master.to_pandas().copy()
+
+        data["date2"] = data["year"] * 10 + data["qtr"]
+        data["date"] = data["date2"].astype("category")
+        data["main_id"] = data["zipcode"] + "-" + data["ein"]
+        data["zipcode"] = data["zipcode"].astype("category")
+        data["ein"] = data["ein"].astype("category")
+        data["main_id"] = data["main_id"].astype("category")
+        data = data.sort_values(["year", "qtr", "ein"]).reset_index(drop=True)
+
+        return data
+
     def base_data(self) -> pl.DataFrame:
         if "qcewtable" not in self.conn.sql("SHOW TABLES;").df().get("name").tolist():
             self.make_qcew_dataset()
 
         df_qcew = self.conn.sql(
-            "SELECT year,qtr,phys_addr_5_zip,first_month_employment,total_wages,second_month_employment,third_month_employment,naics_code FROM qcewtable"
+            "SELECT year,qtr,phys_addr_5_zip,ui_addr_5_zip,mail_addr_5_zip,ein,first_month_employment,total_wages,second_month_employment,third_month_employment,naics_code FROM qcewtable"
         ).pl()
         df_qcew = df_qcew.rename({"phys_addr_5_zip": "zipcode"})
         df_qcew = df_qcew.filter(
@@ -60,33 +171,10 @@ class DataReg(cleanData):
             wages_employee=pl.col("total_wages") / pl.col("total_employment"),
             sector=pl.col("naics_code").str.slice(0, 2),
         )
-        df_qcew = df_qcew.group_by(["year", "qtr", "zipcode"]).agg(
-            mw_industry=pl.col("wages_employee").mean(),
-            total_employment=pl.col("total_employment").mean(),
-        )
-        df_qcew = df_qcew.with_columns(
-            min_wage=pl.when((pl.col("year") >= 2002) & (pl.col("year") < 2010))
-            .then(5.15 * 65 * 8)
-            .when((pl.col("year") >= 2010) & (pl.col("year") < 2023))
-            .then(7.25 * 65 * 8)
-            .when(pl.col("year") == 2023)
-            .then(8.5 * 65 * 8)
-            .when(pl.col("year") == 2024)
-            .then(10.5 * 65 * 8)
-            .otherwise(-1)
-        )
-        df_qcew = df_qcew.with_columns(
-            k_index=pl.col("min_wage") / pl.col("mw_industry")
-        )
-        df_qcew = df_qcew.filter(pl.col("zipcode") != "00611")
-        df_qcew = df_qcew.filter(pl.col("zipcode") != "00636")
-        df_qcew = df_qcew.filter(pl.col("zipcode") != "20121")
-        df_qcew = df_qcew.filter(pl.col("zipcode") != "20123")
-
         return df_qcew
 
-    def make_dataset(self):
-        df_qcew = self.base_data()
+    def make_spatial_dataset(self):
+        df_qcew = self.base_spatial_data()
         gdf = self.spatial_data()
         dp03_df = self.pull_dp03()
         dp03_df = dp03_df.with_columns(qtr=4)
@@ -279,3 +367,10 @@ class DataReg(cleanData):
         spatial_lag = weights.lag_spatial(w, y)
 
         return spatial_lag
+
+    def notify(self, url: str, auth: str, msg: str):
+        requests.post(
+            url,
+            data=msg,
+            headers={"Authorization": auth},
+        )

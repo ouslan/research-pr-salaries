@@ -1,43 +1,126 @@
-from src.data.data_process import DataReg
+import logging
+import os
+import warnings
+from pdb import main
+
 import arviz as az
 import bambi as bmb
-import matplotlib.pyplot as plt
-from linearmodels.panel import RandomEffects, PanelOLS
+from dotenv import load_dotenv
+
+from src.data.data_process import DataReg
 
 
-dr = DataReg()
+def main() -> None:
+    warnings.filterwarnings("ignore", category=FutureWarning)
+    warnings.filterwarnings("ignore", category=UserWarning)
+    load_dotenv()
 
-df = dr.make_dataset()
+    dr = DataReg()
 
-data = df.copy()
-data["date2"] = data["year"] * 10 + data["qtr"]
-data["date"] = data["date2"].astype("category")
-data["zipcode"] = data["zipcode"].astype("category")
+    naics_code2 = [
+        "23",
+        # "44-45", WARNING: Could not be calculated duo to hardware limitation
+        "52",
+        # "54",
+        "56",
+        "62",
+        "72-food",
+    ]
+    naics_code = [
+        "11",
+        "21",
+        "22",
+        "31-33",
+        "42",
+        "48-49",
+        "51",
+        "55",
+        "61",
+        "71",
+        "72-accommodation",
+        "81",
+        "92",
+    ]
+    for naics in naics_code:
+        for i in ["foreign", "local"]:
+            result_path = f"data/processed/results2_{i}_{naics}.nc"
+            if not os.path.exists(result_path):
+                if i == "foreign":
+                    data = dr.regular_data(naics=naics)
+                    data_pr = data[data["foreign"] == 1]
+                else:
+                    data = dr.regular_data(naics=naics)
+                    data_pr = data[data["foreign"] == 0]
 
-data_panel = data.set_index(["zipcode", "date2"])
-data_panel = data_panel.drop("geometry", axis=1)
-model = RandomEffects.from_formula(
-    "total_employment ~ k_index + w_k_index + w_employment + own_children6 + own_children17 + commute_car + food_stamp + with_social_security",
-    data=data_panel,
-)
-results = model.fit(cov_type="clustered", cluster_entity=True)
-print(results.summary)
+                print(f"Running {naics} for {i}")
+                model = bmb.Model(
+                    "log_total_employment ~ 0 + ein + date + log_k_index + own_children6 + own_children17 + commute_car + food_stamp + with_social_security",
+                    data_pr,
+                    dropna=True,
+                )
 
-model = bmb.Model(
-    "total_employment ~ 0 + k_index + w_k_index + w_employment + own_children6 + own_children17  + commute_car + food_stamp + with_social_security + date + zipcode",
-    data,
-    dropna=True,
-)
-results = model.fit(target_accept=0.99, draws=1000, cores=15)
+                results = model.fit(
+                    inference_method="nutpie",
+                    sample_kwargs={"draws": 500, "tune": 500, "target_accept": 0.8},
+                    cores=10,
+                    chains=10,
+                    random_seed=787,
+                )
 
-az.plot_trace(
-    results,
-    compact=True,
-)
-plt.savefig("data.png")
+                az.to_netcdf(results, result_path)
 
-res = az.summary(results)
-res_filtered = res.loc[
-    res.index.str.contains("k_index|with_social_security|w_employment")
-]
-print(res_filtered)
+                dr.notify(
+                    url=str(os.environ.get("URL")),
+                    auth=str(os.environ.get("AUTH")),
+                    msg=f"Successfully completed regression for NAICS {naics} for {i}",
+                )
+            else:
+                print(f"Skipping {naics} for {i}")
+                logging.info(f"{result_path} already exists")
+                continue
+
+    for naics in naics_code2:
+        data = dr.regular_data(naics=naics)
+        for i in ["foreign", "local"]:
+            result_path = f"data/processed/results_{i}_{naics}.nc"
+            if not os.path.exists(result_path):
+                if i == "foreign":
+                    data_pr = data[data["foreign"] == 1]
+                else:
+                    data_pr = data[data["foreign"] == 0]
+
+                print(f"Running {naics} for {i}")
+                all_traces = []
+
+                model = bmb.Model(
+                    "log_total_employment ~ 0 + date + ein + log_k_index + own_children6 + own_children17 + commute_car + food_stamp + with_social_security",
+                    data_pr,
+                    dropna=True,
+                )
+
+                for batch in range(10):  # 5 batches of 2 chains
+                    trace = model.fit(
+                        inference_method="nutpie",
+                        sample_kwargs={"draws": 500, "tune": 500, "target_accept": 0.8},
+                        chains=1,
+                        cores=1,
+                        random_seed=787 + batch,
+                    )
+                    all_traces.append(trace)
+
+                results = az.concat(all_traces, dim="chain")
+                az.to_netcdf(results, result_path)
+
+                dr.notify(
+                    url=str(os.environ.get("URL")),
+                    auth=str(os.environ.get("AUTH")),
+                    msg=f"Successfully completed regression for NAICS {naics} for {i}",
+                )
+            else:
+                print(f"Skipping {naics} for {i}")
+                logging.info(f"{result_path} already exists")
+                continue
+
+
+if __name__ == "__main__":
+    main()
