@@ -543,7 +543,7 @@ rasterio==1.4.3
     #   tobler
 rasterstats==0.20.0
     # via tobler
-requests==2.32.3
+requests==2.32.4
     # via
     #   access
     #   libpysal
