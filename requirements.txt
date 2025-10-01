@@ -724,6 +724,7 @@ ujson==5.10.0
     # via arviz
 urllib3==2.5.0
     # via
+    #   pr-salaries (pyproject.toml)
     #   distributed
     #   requests
 wadler-lindig==0.1.6

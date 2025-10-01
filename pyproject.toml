@@ -22,6 +22,7 @@ dependencies = [
   "nutpie>=0.14.3",
   "bayeux-ml>=0.1.15",
   "requests>=2.32.4",
+  "urllib3>=2.5.0",
 ]
 
 [dependency-groups]
