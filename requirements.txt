@@ -545,6 +545,7 @@ rasterstats==0.20.0
     # via tobler
 requests==2.32.4
     # via
+    #   pr-salaries (pyproject.toml)
     #   access
     #   libpysal
     #   pysal

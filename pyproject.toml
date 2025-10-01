@@ -21,10 +21,21 @@ dependencies = [
   "numpyro>=0.18.0",
   "nutpie>=0.14.3",
   "bayeux-ml>=0.1.15",
+  "requests>=2.32.4",
 ]
 
 [dependency-groups]
-dev = ["jupyter>=1.1.1", "nutpie>=0.14.3", "pre-commit>=4.2.0", "pynvim>=0.5.2"]
-gpu = [
-    "jax[rocm]>=0.5.0",
+dev = [
+  "cairosvg>=2.8.2",
+  "jupyter>=1.1.1",
+  "jupyter-client>=8.6.3",
+  "jupytext>=1.17.3",
+  "kaleido>=1.1.0",
+  "nutpie>=0.14.3",
+  "plotly>=6.3.0",
+  "pnglatex>=1.1",
+  "pre-commit>=4.2.0",
+  "pynvim>=0.5.2",
+  "pyperclip>=1.11.0",
 ]
+gpu = ["jax[rocm]>=0.5.0"]
