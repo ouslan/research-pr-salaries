@@ -89,7 +89,7 @@ class DataReg(cleanData):
             foreign=pl.when(pl.col("ui_addr_5_zip").is_in(pr_zips)).then(0).otherwise(1)
         )
 
-        df_qcew = df_qcew.group_by(["year", "qtr", "zipcode", "ein"]).agg(
+        df_qcew = df_qcew.group_by(["year", "qtr", "zipcode"]).agg(
             total_employment=pl.col("total_employment").sum(),
             total_wages=pl.col("total_wages").sum(),
             foreign=pl.col("foreign").mean(),
@@ -105,7 +105,7 @@ class DataReg(cleanData):
         )
 
         # List of columns that we want to exclude
-        exclude_columns = ["year", "ein", "zipcode", "qtr", "state"]
+        exclude_columns = ["year", "zipcode", "qtr", "state"]
 
         # Get all columns except the excluded ones
         columns_to_transform = [
@@ -125,11 +125,8 @@ class DataReg(cleanData):
 
         data["date2"] = data["year"] * 10 + data["qtr"]
         data["date"] = data["date2"].astype("category")
-        data["main_id"] = data["zipcode"] + "-" + data["ein"]
         data["zipcode"] = data["zipcode"].astype("category")
-        data["ein"] = data["ein"].astype("category")
-        data["main_id"] = data["main_id"].astype("category")
-        data = data.sort_values(["year", "qtr", "ein"]).reset_index(drop=True)
+        data = data.sort_values(["year", "qtr", "zipcode"]).reset_index(drop=True)
 
         return data
 

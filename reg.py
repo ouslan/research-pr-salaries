@@ -17,16 +17,14 @@ def main() -> None:
 
     dr = DataReg()
 
-    naics_code2 = [
+    naics_code = [
         "23",
-        # "44-45", WARNING: Could not be calculated duo to hardware limitation
+        "44-45",
         "52",
-        # "54",
+        "54",
         "56",
         "62",
         "72-food",
-    ]
-    naics_code = [
         "11",
         "21",
         "22",
@@ -43,7 +41,7 @@ def main() -> None:
     ]
     for naics in naics_code:
         for i in ["foreign", "local"]:
-            result_path = f"data/processed/results2_{i}_{naics}.nc"
+            result_path = f"data/processed/results3_{i}_{naics}.nc"
             if not os.path.exists(result_path):
                 if i == "foreign":
                     data = dr.regular_data(naics=naics)
@@ -53,15 +51,31 @@ def main() -> None:
                     data_pr = data[data["foreign"] == 0]
 
                 print(f"Running {naics} for {i}")
+
+                priors = {
+                    "log_k_index": bmb.Prior("Normal", mu=0, sigma=1),
+                    "own_children6": bmb.Prior("Normal", mu=0, sigma=1),
+                    "own_children17": bmb.Prior("Normal", mu=0, sigma=1),
+                    "commute_car": bmb.Prior("Normal", mu=0, sigma=1),
+                    "food_stamp": bmb.Prior("Normal", mu=0, sigma=1),
+                    "with_social_security": bmb.Prior("Normal", mu=0, sigma=1),
+                    "zipcode": bmb.Prior(
+                        "Normal", mu=0, sigma=1
+                    ),  # fixed effects dummies
+                    "date": bmb.Prior("Normal", mu=0, sigma=1),  # fixed effects dummies
+                    "sigma": bmb.Prior("Exponential", lam=1),  # error term
+                }
+
                 model = bmb.Model(
-                    "log_total_employment ~ 0 + ein + date + log_k_index + own_children6 + own_children17 + commute_car + food_stamp + with_social_security",
+                    "log_total_employment ~ 0 + zipcode + date + log_k_index + own_children6 + own_children17 + commute_car + food_stamp + with_social_security",
                     data_pr,
+                    priors=priors,
                     dropna=True,
                 )
 
                 results = model.fit(
                     inference_method="nutpie",
-                    sample_kwargs={"draws": 500, "tune": 500, "target_accept": 0.8},
+                    sample_kwargs={"target_accept": 0.8},
                     cores=10,
                     chains=10,
                     random_seed=787,
@@ -69,53 +83,11 @@ def main() -> None:
 
                 az.to_netcdf(results, result_path)
 
-                dr.notify(
-                    url=str(os.environ.get("URL")),
-                    auth=str(os.environ.get("AUTH")),
-                    msg=f"Successfully completed regression for NAICS {naics} for {i}",
-                )
-            else:
-                print(f"Skipping {naics} for {i}")
-                logging.info(f"{result_path} already exists")
-                continue
-
-    for naics in naics_code2:
-        data = dr.regular_data(naics=naics)
-        for i in ["foreign", "local"]:
-            result_path = f"data/processed/results_{i}_{naics}.nc"
-            if not os.path.exists(result_path):
-                if i == "foreign":
-                    data_pr = data[data["foreign"] == 1]
-                else:
-                    data_pr = data[data["foreign"] == 0]
-
-                print(f"Running {naics} for {i}")
-                all_traces = []
-
-                model = bmb.Model(
-                    "log_total_employment ~ 0 + date + ein + log_k_index + own_children6 + own_children17 + commute_car + food_stamp + with_social_security",
-                    data_pr,
-                    dropna=True,
-                )
-
-                for batch in range(10):  # 5 batches of 2 chains
-                    trace = model.fit(
-                        inference_method="nutpie",
-                        sample_kwargs={"draws": 500, "tune": 500, "target_accept": 0.8},
-                        chains=1,
-                        cores=1,
-                        random_seed=787 + batch,
-                    )
-                    all_traces.append(trace)
-
-                results = az.concat(all_traces, dim="chain")
-                az.to_netcdf(results, result_path)
-
-                dr.notify(
-                    url=str(os.environ.get("URL")),
-                    auth=str(os.environ.get("AUTH")),
-                    msg=f"Successfully completed regression for NAICS {naics} for {i}",
-                )
+                # dr.notify(
+                #     url=str(os.environ.get("URL")),
+                #     auth=str(os.environ.get("AUTH")),
+                #     msg=f"Successfully completed regression for NAICS {naics} for {i}",
+                # )
             else:
                 print(f"Skipping {naics} for {i}")
                 logging.info(f"{result_path} already exists")
