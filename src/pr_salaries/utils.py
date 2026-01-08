@@ -50,7 +50,7 @@ class DataReg(cleanData):
         return df_qcew
 
     def regular_data(self, naics: str):
-        df_qcew = self.base_data()#.filter(pl.col("year") >= 2012)
+        df_qcew = self.base_data()  # .filter(pl.col("year") >= 2012)
         if naics == "31-33":
             df_qcew = df_qcew.filter(
                 (pl.col("naics_code").str.starts_with("31"))
@@ -119,7 +119,9 @@ class DataReg(cleanData):
 
         # Add the log-transformed columns to the DataFrame
         master = master.with_columns(log_columns)
-        master = master.with_columns(treated=pl.when(pl.col("foreign") == 1).then(True).otherwise(False))
+        master = master.with_columns(
+            treated=pl.when(pl.col("foreign") == 1).then(True).otherwise(False)
+        )
         master = master.with_columns(k_dummy=pl.col("foreign") * pl.col("log_k_index"))
 
         data = master.to_pandas().copy()
