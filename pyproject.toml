@@ -1,24 +1,29 @@
 [project]
-name = "pr-salaries"
+name = "pr-salaries-replication"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 authors = [{ name = "Alejandro Ouslan", email = "alejandro.ouslan@upr.edu" }]
 requires-python = ">=3.13"
 dependencies = [
-    "censusforge>=0.5.0",
+    "censusforge>=0.5.1",
+    "geopandas>=1.1.2",
     "jp-qcew>=3.0.1",
-    "jp-tools>=0.5.4",
+    "jp-tools>=0.5.6",
+    "libpysal>=4.14.1",
+    "pandas>=2.3.3",
+    "polars>=1.37.0",
+    "shapely>=2.1.2",
 ]
 
 [project.scripts]
-pr-salaries = "pr_salaries:main"
+research-pr-salaries = "pr_salaries_replication:main"
 
 [build-system]
-requires = ["uv_build>=0.9.22,<0.10.0"]
+requires = ["uv_build>=0.9.24,<0.10.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    "pre-commit>=4.5.1",
+    "jupyter>=1.1.1",
 ]
