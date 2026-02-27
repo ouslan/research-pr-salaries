@@ -6,24 +6,22 @@ readme = "README.md"
 authors = [{ name = "Alejandro Ouslan", email = "alejandro.ouslan@upr.edu" }]
 requires-python = ">=3.13"
 dependencies = [
-    "censusforge>=0.5.1",
-    "geopandas>=1.1.2",
-    "jp-qcew>=3.0.1",
-    "jp-tools>=0.5.6",
-    "libpysal>=4.14.1",
-    "pandas>=2.3.3",
-    "polars>=1.37.0",
-    "shapely>=2.1.2",
+  "censusforge>=0.5.1",
+  "geopandas>=1.1.2",
+  "jp-qcew>=3.0.1",
+  "jp-tools>=0.5.6",
+  "libpysal>=4.14.1",
+  "pandas>=2.3.3",
+  "polars>=1.37.0",
+  "shapely>=2.1.2",
 ]
 
 [project.scripts]
-research-pr-salaries = "pr_salaries_replication:main"
+research-pr-salaries = "prsal_repl:main"
 
 [build-system]
 requires = ["uv_build>=0.9.24,<0.10.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
-dev = [
-    "jupyter>=1.1.1",
-]
+dev = ["jupyter>=1.1.1"]
