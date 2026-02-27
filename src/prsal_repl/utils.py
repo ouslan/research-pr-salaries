@@ -12,7 +12,7 @@ from CensusForge import CensusAPI
 from jp_tools import download
 
 
-class DataReg(CleanQCEW):
+class DataUtils(CleanQCEW):
     def __init__(
         self,
         saving_dir: str = "data/",

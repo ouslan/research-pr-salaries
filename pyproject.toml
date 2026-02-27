@@ -13,6 +13,8 @@ dependencies = [
   "libpysal>=4.14.1",
   "pandas>=2.3.3",
   "polars>=1.37.0",
+  "pymc>=5.28.0",
+  "pytensor>=2.38.0",
   "shapely>=2.1.2",
 ]
 
