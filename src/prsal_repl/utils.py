@@ -6,8 +6,8 @@ import pandas as pd
 import polars as pl
 import requests
 from libpysal import weights
-from shapely import wkt
 from jp_qcew import CleanQCEW
+from pathlib import Path
 from CensusForge import CensusAPI
 
 
@@ -136,8 +136,7 @@ class DataReg(CleanQCEW):
 
     def base_data(self) -> pl.DataFrame:
 
-        df_qcew = self.conn.execute(
-            f"""
+        df_qcew = self.conn.execute(f"""
             SELECT
                 year,
                 qtr,
@@ -151,8 +150,7 @@ class DataReg(CleanQCEW):
                 third_month_employment,
                 naics_code
             FROM '{self.saving_dir}processed/pr-qcew-*.parquet';
-            """
-        ).pl()
+            """).pl()
 
         df_qcew = df_qcew.rename({"phys_addr_5_zip": "zipcode"})
         df_qcew = df_qcew.filter(
@@ -262,66 +260,67 @@ class DataReg(CleanQCEW):
 
     def pull_dp03(self) -> pl.DataFrame:
         for _year in range(2011, 2024):
-            if path 
+            file_path = Path(f"{self.saving_dir}processed/acs5-{_year}.parquet")
+            if not file_path.exists():
 
-            logging.info(f"pulling {_year} data")
-            r = CensusAPI().query(
-                params_list=[
-                    "DP03_0001E",
-                    "DP03_0008E",
-                    "DP03_0009E",
-                    "DP03_0014E",
-                    "DP03_0016E",
-                    "DP03_0019E",
-                    "DP03_0025E",
-                    "DP03_0051E",
-                    "DP03_0052E",
-                    "DP03_0053E",
-                    "DP03_0054E",
-                    "DP03_0055E",
-                    "DP03_0056E",
-                    "DP03_0057E",
-                    "DP03_0058E",
-                    "DP03_0059E",
-                    "DP03_0060E",
-                    "DP03_0061E",
-                    "DP03_0070E",
-                    "DP03_0074E",
-                ],
-                year=_year,
-                geography="zip code tabulation area",
-                dataset="acs-acs5-profile",
-            )
-            df = pl.DataFrame(r)
-            df = df.rename(df.row(0, named=True))
-            df = df.slice(1).with_columns(pl.col("*").cast(pl.Float32))
-            df = df.rename(
-                {
-                    "dp03_0001e": "total_population",
-                    "dp03_0008e": "in_labor_force",
-                    "dp03_0009e": "unemployment",
-                    "dp03_0014e": "own_children6",
-                    "dp03_0016e": "own_children17",
-                    "dp03_0019e": "commute_car",
-                    "dp03_0025e": "commute_time",
-                    "dp03_0051e": "total_house",
-                    "dp03_0052e": "inc_less_10k",
-                    "dp03_0053e": "inc_10k_15k",
-                    "dp03_0054e": "inc_15k_25k",
-                    "dp03_0055e": "inc_25k_35k",
-                    "dp03_0056e": "inc_35k_50k",
-                    "dp03_0057e": "inc_50k_75k",
-                    "dp03_0058e": "inc_75k_100k",
-                    "dp03_0059e": "inc_100k_150k",
-                    "dp03_0060e": "inc_150k_200k",
-                    "dp03_0061e": "inc_more_200k",
-                    "dp03_0070e": "with_social_security",
-                    "dp03_0074e": "food_stamp",
-                }
-            )
-            df = df.rename({"zip code tabulation area": "zipcode"})
-            df.write_parquet(file=f"{self.saving_dir}processed/acs5-{_year}.parquet")
-            logging.info(f"succesfully inserting {_year}")
+                logging.info(f"pulling {_year} data")
+                r = CensusAPI().query(
+                    params_list=[
+                        "DP03_0001E",
+                        "DP03_0008E",
+                        "DP03_0009E",
+                        "DP03_0014E",
+                        "DP03_0016E",
+                        "DP03_0019E",
+                        "DP03_0025E",
+                        "DP03_0051E",
+                        "DP03_0052E",
+                        "DP03_0053E",
+                        "DP03_0054E",
+                        "DP03_0055E",
+                        "DP03_0056E",
+                        "DP03_0057E",
+                        "DP03_0058E",
+                        "DP03_0059E",
+                        "DP03_0060E",
+                        "DP03_0061E",
+                        "DP03_0070E",
+                        "DP03_0074E",
+                    ],
+                    year=_year,
+                    geography="zip code tabulation area",
+                    dataset="acs-acs5-profile",
+                )
+                df = pl.DataFrame(r)
+                df = df.rename(df.row(0, named=True))
+                df = df.slice(1).with_columns(pl.col("*").cast(pl.Float32))
+                df = df.rename(
+                    {
+                        "dp03_0001e": "total_population",
+                        "dp03_0008e": "in_labor_force",
+                        "dp03_0009e": "unemployment",
+                        "dp03_0014e": "own_children6",
+                        "dp03_0016e": "own_children17",
+                        "dp03_0019e": "commute_car",
+                        "dp03_0025e": "commute_time",
+                        "dp03_0051e": "total_house",
+                        "dp03_0052e": "inc_less_10k",
+                        "dp03_0053e": "inc_10k_15k",
+                        "dp03_0054e": "inc_15k_25k",
+                        "dp03_0055e": "inc_25k_35k",
+                        "dp03_0056e": "inc_35k_50k",
+                        "dp03_0057e": "inc_50k_75k",
+                        "dp03_0058e": "inc_75k_100k",
+                        "dp03_0059e": "inc_100k_150k",
+                        "dp03_0060e": "inc_150k_200k",
+                        "dp03_0061e": "inc_more_200k",
+                        "dp03_0070e": "with_social_security",
+                        "dp03_0074e": "food_stamp",
+                    }
+                )
+                df = df.rename({"zip code tabulation area": "zipcode"})
+                df.write_parquet(file=file_path)
+                logging.info(f"succesfully inserting {_year}")
         return self.conn.sql(
             f"SELECT * FROM '{self.saving_dir}processed/acs5-*.parquet';"
         ).pl()
