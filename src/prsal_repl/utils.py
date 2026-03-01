@@ -4,6 +4,7 @@ import os
 import geopandas as gpd
 import pandas as pd
 import polars as pl
+import tempfile
 import requests
 from libpysal import weights
 from jp_qcew import CleanQCEW
@@ -186,11 +187,11 @@ class DataUtils(CleanQCEW):
         )
         return df_qcew
 
-    def make_spatial_dataset(self):
+    def make_pr_dataset(self):
         df_qcew = self.base_spatial_data()
-        gdf = self.spatial_data()
-        # dp03_df = self.pull_dp03()
-        # dp03_df = dp03_df.with_columns(qtr=4)
+        gdf = self.zips_goem()
+        dp03_df = self.pull_dp03()
+        dp03_df = dp03_df.with_columns(qtr=4)
 
         gdf = gdf.join(
             df_qcew.to_pandas().set_index("zipcode"),
@@ -199,64 +200,69 @@ class DataUtils(CleanQCEW):
             validate="1:m",
         )
 
-        # gdf = gdf.merge(
-        #     dp03_df.to_pandas(),
-        #     on=["year", "qtr", "zipcode"],
-        #     how="left",
-        #     validate="1:1",
-        # )
+        gdf = gdf.merge(
+            dp03_df.to_pandas(),
+            on=["year", "qtr", "zipcode"],
+            how="left",
+            validate="1:1",
+        )
 
         gdf = gdf.sort_values(by=["zipcode", "year", "qtr"]).reset_index(drop=True)
-        # columns = [
-        #     "total_population",
-        #     "own_children6",
-        #     "own_children17",
-        #     "commute_car",
-        #     "total_house",
-        #     "with_social_security",
-        #     "food_stamp",
-        # ]
-        # for col in columns:
-        #     gdf[col] = gdf.groupby("zipcode")[col].transform(
-        #         lambda group: group.interpolate(method="cubic")
-        #     )
+        columns = [
+            "total_population",
+            "own_children6",
+            "own_children17",
+            "commute_car",
+            "total_house",
+            "with_social_security",
+            "food_stamp",
+        ]
+        for col in columns:
+            gdf[col] = gdf.groupby("zipcode")[col].transform(
+                lambda group: group.interpolate(method="cubic")
+            )
 
-        # gdf = gdf[(gdf["year"] >= 2012) & (gdf["year"] < 2024)]
+        gdf = gdf[(gdf["year"] >= 2012) & (gdf["year"] < 2024)]
 
         spatial_lag_results = []
         w = weights.Queen.from_dataframe(gdf[(gdf["year"] == 2012) & (gdf["qtr"] == 4)])
 
         # Assuming `df` has 'year' and 'quarter' columns for grouping
-        # for year in range(2012, 2024):
-        #     for qtr in range(1, 5):
-        #         group_df = gdf[(gdf["year"] == year) & (gdf["qtr"] == qtr)].reset_index(
-        #             drop=True
-        #         )
-        #         spatial_lag_y = self.calculate_spatial_lag(
-        #             group_df, w, "zip_employment"
-        #         )
-        #         spatial_lag_x = self.calculate_spatial_lag(group_df, w, "k_index")
+        for year in range(2012, 2024):
+            for qtr in range(1, 5):
+                group_df = gdf[(gdf["year"] == year) & (gdf["qtr"] == qtr)].reset_index(
+                    drop=True
+                )
+                spatial_lag_y = self.calculate_spatial_lag(
+                    group_df, w, "zip_employment"
+                )
+                spatial_lag_x = self.calculate_spatial_lag(group_df, w, "k_index")
 
-        #         # Add the spatial lag results back to the group dataframe
-        #         group_df["w_employment"] = (
-        #             spatial_lag_y.flatten()
-        #         )  # Flatten to make it 1D for the column
-        #         group_df["w_k_index"] = spatial_lag_x.flatten()
+                # Add the spatial lag results back to the group dataframe
+                group_df["w_employment"] = (
+                    spatial_lag_y.flatten()
+                )  # Flatten to make it 1D for the column
+                group_df["w_k_index"] = spatial_lag_x.flatten()
 
-        #         # Append the group to the results list
-        #         spatial_lag_results.append(group_df)
+                # Append the group to the results list
+                spatial_lag_results.append(group_df)
 
         # Concatenate all the results back together
-        # gdf = pd.concat(spatial_lag_results)
-        # gdf = gdf[(gdf["year"] >= 2012) & (gdf["year"] < 2023)]
+        gdf = pd.concat(spatial_lag_results)
+        gdf = gdf[(gdf["year"] >= 2012) & (gdf["year"] < 2023)]
         return gdf
 
-    def spatial_data(self) -> gpd.GeoDataFrame:
-        gdf = gpd.GeoDataFrame(self.make_spatial_table())
-        gdf["geometry"] = gdf["geometry"].apply(wkt.loads)
-        gdf = gdf.set_geometry("geometry").set_crs("EPSG:4269", allow_override=True)
-        gdf = gdf.to_crs("EPSG:3395")
-        gdf["zipcode"] = gdf["zipcode"].astype(str)
+    def make_spatial_dataset(self):
+        df_qcew = self.base_spatial_data()
+        gdf = self.zips_goem()
+        gdf = gdf.join(
+            df_qcew.to_pandas().set_index("zipcode"),
+            on="zipcode",
+            how="inner",
+            validate="1:m",
+        )
+
+        gdf = gdf.sort_values(by=["zipcode", "year", "qtr"]).reset_index(drop=True)
         return gdf
 
     def pull_dp03(self) -> pl.DataFrame:
@@ -287,6 +293,7 @@ class DataUtils(CleanQCEW):
                         "DP03_0061E",
                         "DP03_0070E",
                         "DP03_0074E",
+                        "GEO_ID"
                     ],
                     year=_year,
                     geography="zip code tabulation area",
@@ -294,29 +301,30 @@ class DataUtils(CleanQCEW):
                 )
                 df = pl.DataFrame(r)
                 df = df.rename(df.row(0, named=True))
-                df = df.slice(1).with_columns(pl.col("*").cast(pl.Float32))
+                df = df.slice(1).with_columns(pl.col("*").exclude("state", "GEO_ID").cast(pl.Float32))
                 df = df.rename(
                     {
-                        "dp03_0001e": "total_population",
-                        "dp03_0008e": "in_labor_force",
-                        "dp03_0009e": "unemployment",
-                        "dp03_0014e": "own_children6",
-                        "dp03_0016e": "own_children17",
-                        "dp03_0019e": "commute_car",
-                        "dp03_0025e": "commute_time",
-                        "dp03_0051e": "total_house",
-                        "dp03_0052e": "inc_less_10k",
-                        "dp03_0053e": "inc_10k_15k",
-                        "dp03_0054e": "inc_15k_25k",
-                        "dp03_0055e": "inc_25k_35k",
-                        "dp03_0056e": "inc_35k_50k",
-                        "dp03_0057e": "inc_50k_75k",
-                        "dp03_0058e": "inc_75k_100k",
-                        "dp03_0059e": "inc_100k_150k",
-                        "dp03_0060e": "inc_150k_200k",
-                        "dp03_0061e": "inc_more_200k",
-                        "dp03_0070e": "with_social_security",
-                        "dp03_0074e": "food_stamp",
+                        "DP03_0001E": "total_population",
+                        "DP03_0008E": "in_labor_force",
+                        "DP03_0009E": "unemployment",
+                        "DP03_0014E": "own_children6",
+                        "DP03_0016E": "own_children17",
+                        "DP03_0019E": "commute_car",
+                        "DP03_0025E": "commute_time",
+                        "DP03_0051E": "total_house",
+                        "DP03_0052E": "inc_less_10k",
+                        "DP03_0053E": "inc_10k_15k",
+                        "DP03_0054E": "inc_15k_25k",
+                        "DP03_0055E": "inc_25k_35k",
+                        "DP03_0056E": "inc_35k_50k",
+                        "DP03_0057E": "inc_50k_75k",
+                        "DP03_0058E": "inc_75k_100k",
+                        "DP03_0059E": "inc_100k_150k",
+                        "DP03_0060E": "inc_150k_200k",
+                        "DP03_0061E": "inc_more_200k",
+                        "DP03_0070E": "with_social_security",
+                        "DP03_0074E": "food_stamp",
+                        "GEO_ID": "geoid"
                     }
                 )
                 df = df.rename({"zip code tabulation area": "zipcode"})
