@@ -224,28 +224,45 @@ class DataUtils(CleanQCEW):
 
         gdf = gdf[(gdf["year"] >= 2012) & (gdf["year"] < 2024)]
 
-        spatial_lag_results = []
-        w = weights.Queen.from_dataframe(gdf[(gdf["year"] == 2012) & (gdf["qtr"] == 4)])
+        base = gdf[(gdf["year"] == 2012) & (gdf["qtr"] == 4)].copy()
+        base = base.sort_values("zipcode")
 
-        # Assuming `df` has 'year' and 'quarter' columns for grouping
+        w = weights.Queen.from_dataframe(base)
+        w.transform = "r"
+
+        zip_order = base["zipcode"].values
+
+        spatial_lag_results = []
+
         for year in range(2012, 2024):
             for qtr in range(1, 5):
-                group_df = gdf[(gdf["year"] == year) & (gdf["qtr"] == qtr)].reset_index(
-                    drop=True
-                )
-                spatial_lag_y = self.calculate_spatial_lag(
-                    group_df, w, "zip_employment"
-                )
-                spatial_lag_x = self.calculate_spatial_lag(group_df, w, "k_index")
 
-                # Add the spatial lag results back to the group dataframe
-                group_df["w_employment"] = (
-                    spatial_lag_y.flatten()
-                )  # Flatten to make it 1D for the column
-                group_df["w_k_index"] = spatial_lag_x.flatten()
+                group_df = gdf[
+                    (gdf["year"] == year) & (gdf["qtr"] == qtr)
+                ].copy()
 
-                # Append the group to the results list
+                # enforce identical zipcode ordering
+                group_df = (
+                    group_df
+                    .set_index("zipcode")
+                    .loc[zip_order]
+                    .reset_index()
+                )
+
+                spatial_lag_y = weights.lag_spatial(
+                    w, group_df["zip_employment"].values
+                )
+
+                spatial_lag_x = weights.lag_spatial(
+                    w, group_df["k_index"].values
+                )
+
+                group_df["w_employment"] = spatial_lag_y
+                group_df["w_k_index"] = spatial_lag_x
+
                 spatial_lag_results.append(group_df)
+
+        gdf = pd.concat(spatial_lag_results)
 
         # Concatenate all the results back together
         gdf = pd.concat(spatial_lag_results)
@@ -267,7 +284,7 @@ class DataUtils(CleanQCEW):
 
     def pull_dp03(self) -> pl.DataFrame:
         for _year in range(2011, 2024):
-            file_path = Path(f"{self.saving_dir}processed/acs5-{_year}.parquet")
+            file_path = Path(f"{self.saving_dir}raw/acs5-{_year}.parquet")
             if not file_path.exists():
 
                 logging.info(f"pulling {_year} data")
@@ -293,7 +310,6 @@ class DataUtils(CleanQCEW):
                         "DP03_0061E",
                         "DP03_0070E",
                         "DP03_0074E",
-                        "GEO_ID"
                     ],
                     year=_year,
                     geography="zip code tabulation area",
@@ -301,7 +317,7 @@ class DataUtils(CleanQCEW):
                 )
                 df = pl.DataFrame(r)
                 df = df.rename(df.row(0, named=True))
-                df = df.slice(1).with_columns(pl.col("*").exclude("state", "GEO_ID").cast(pl.Float32))
+                df = df.slice(1).with_columns(pl.col("*").exclude("zip code tabulation area").cast(pl.Float32))
                 df = df.rename(
                     {
                         "DP03_0001E": "total_population",
@@ -324,14 +340,15 @@ class DataUtils(CleanQCEW):
                         "DP03_0061E": "inc_more_200k",
                         "DP03_0070E": "with_social_security",
                         "DP03_0074E": "food_stamp",
-                        "GEO_ID": "geoid"
                     }
                 )
                 df = df.rename({"zip code tabulation area": "zipcode"})
+                df = df.with_columns(year=_year)
+                df = df.select(pl.col("*").exclude("state"))
                 df.write_parquet(file=file_path)
                 logging.info(f"succesfully inserting {_year}")
         return self.conn.sql(
-            f"SELECT * FROM '{self.saving_dir}processed/acs5-*.parquet';"
+            f"SELECT * FROM '{self.saving_dir}raw/acs5-*.parquet';"
         ).pl()
 
     def zips_goem(self) -> pd.DataFrame:

@@ -6,6 +6,7 @@ readme = "README.md"
 authors = [{ name = "Alejandro Ouslan", email = "alejandro.ouslan@upr.edu" }]
 requires-python = ">=3.12"
 dependencies = [
+  "bambi>=0.17.2",
   "censusforge>=0.5.1",
   "geopandas>=1.1.2",
   "jp-qcew>=3.0.1",
