@@ -176,9 +176,15 @@ data/qcew
 *.sqlite
 *.ddb
 *.wal
-assets/
 aux/
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.bcf
+*.out
+*.xml
 *.gz
 
 *.csv
-*.png

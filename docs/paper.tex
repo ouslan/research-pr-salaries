@@ -10,7 +10,7 @@
 \usepackage[backend=biber,style=numeric]{biblatex}
 \addbibresource{../docs/references.bib}
 
-\title{The Association Between the Kaitz Index and Employment in Puerto Rico}
+\title{The Association Between the Kaitz Index and Employment in Puerto Rico (Working Paper)}
 \author{
   Alejandro M. Ouslan \\
   \small{University of Puerto Rico, Mayaguez} \\
@@ -48,7 +48,7 @@ effect on employment, while the Federal Reserve's 2012 \textit{Competitiveness o
 the need for policies that focus on employment creation and suggested a subminimum wage for young workers under 25. Locally,
 Hernández (2017) found a reduction in total employment following minimum wage increases, while Hernández \& Wu (2025)
 identified differential responses by local versus foreign-owned businesses. However, the spatial dynamics of the minimum
-wage—how wage conditions in one region may affect neighboring areas—remain underexplored. This paper seeks to fill that gap
+wage and how wage conditions in one region may affect neighboring areas—remain under explored. This paper seeks to fill that gap
 by analyzing the relationship between the Kaitz Index \cite{williams1998minimum} and employment using spatial econometrics.
 
 \section{Literature Review}
@@ -59,17 +59,19 @@ in employment. Brown (1988) \cite{brown1988minimum} noted that the U.S. minimum 
 peaks. Krueger (1994) \cite{card1994comment} found a negative relationship between minimum wages and employment using aggregate time series data.
 In contrast, Caraballo-Cueto (2016) \cite{caraballo2016there} observed a slight positive effect of minimum wages on employment in the short run.
 Finally, Neumark (2000) \cite{neumark2000minimum} found that higher minimum wages are associated with higher unemployment rates across U.S. regions.
-These studies highlight the complexity of the minimum wage-employment relationship, with results varying by geography, time,
+These studies highlight the complexity of the minimum wage-employment relationship, with results varying by geography, time
 and methodology.
 
+
 \section{Methodology}
+
+\subsection{Calculating the Kaitz-index}
 
 The minimum wage data used in this study comes from the FRED database, while employment and average wage data are sourced from the Quarterly
 Census of Employment and Wages (QCEW) provided by the Department of Labor. The dataset consists of 6,240 observations spanning Q1 2012 to Q4 2023,
 organized by postal codes in Puerto Rico. Additional data on economic characteristics of the zip codes were obtained from the American Community Survey.
+The following table shows how the Kaitz index is defined for this study.
 
-This study employs a Spatial Durbin Model (SDM) \cite{lee2016identification} with fixed effects to account for spatial dependence between regions.
-The model allows for the estimation of both direct and indirect effects. The Kaitz Index is defined as:
 
 \[
 	K_{it} = \frac{m_t}{\bar{w}_{it}}
@@ -81,6 +83,14 @@ where:
 	\item $m_t$ is the minimum wage at time $t$,
 	\item $\bar{w}_{it}$ is the average wage in zip code $i$ during time $t$.
 \end{itemize}
+
+
+\subsection{Introducing Space}
+
+
+This study employs a Spatial Durbin Model (SDM) \cite{lee2016identification} with fixed effects to account for spatial dependence between regions.
+The model allows for the estimation of both direct and indirect effects. The Kaitz Index is defined as:
+
 
 The full Spatial Durbin Model is:
 
@@ -97,6 +107,31 @@ where:
 	\item $\epsilon_{it}$ is the error term.
 \end{itemize}
 
+
+For robustness this research implements 4 distinct $W$ spatial weights. They are defined as followed
+\begin{itemize}
+	\item $W_{queen}$: Which models all regions that connect borders
+	      \[
+		      Y_{it} = \alpha + \beta_1 X_{it} + \rho W_{queen} Y_{it} + \gamma W_{queen} X_{it} + \epsilon_{it}
+	      \]
+	\item $W_{knn6}$: Which models all regions that up too 6 neighboring regions away
+	      \[
+		      Y_{it} = \alpha + \beta_1 X_{it} + \rho W_{knn6} Y_{it} + \gamma W_{knn6} X_{it} + \epsilon_{it}
+	      \]
+	\item $W_{distance}$: Which model all regions in a 30 mile radius.
+	      \[
+		      Y_{it} = \alpha + \beta_1 X_{it} + \rho W_{distance} Y_{it} + \gamma W_{distance} X_{it} + \epsilon_{it}
+	      \]
+	\item $W_{tensor}$: A semi parametric approach is implemented as a diagnostic.
+	      \[
+		      Y_{it} = \alpha + \beta_1 X_{it} + f(C_i) + \epsilon_{it}
+	      \]
+\end{itemize}
+
+
+The $W_{tensor}$ approach is used to determine if the assumption that spatial correlation is uniform between regions. Where $f(\dot)$ is the
+tensor product using the $C_i$ which is the centroid for the region.
+
 \section{Results}
 
 The results indicate a negative and statistically significant relationship between the Kaitz
@@ -104,7 +139,10 @@ Index and employment in Puerto Rico. Additionally, the spillover effects of the 
 Index on neighboring regions’ employment levels are negative. However, convergence issues
 with the MCMC method for the Kaitz variable make it difficult to quantify the precise
 magnitude of the spillover effects. A small but significant effect of households
-with children under 6 years old on employment was also observed.
+with children under 6 years old on employment was also observed. This convergence issues
+might stem from the possibility of miss specified weights matrix. Looking at the spatial smoothing,
+they are not uniform this hints to the possibility that the spatial relationships from the regions
+are not uniform between each other
 
 \section{Conclusion}
 
@@ -113,7 +151,9 @@ and employment in Puerto Rico's ZIP codes, suggesting that higher minimum wages 
 average wage may reduce employment levels. The spatial econometric approach used here also
 highlights spillover effects, indicating that wage policies in one area can influence neighboring
 regions. Future research should explore lagged spatial effects to evaluate whether the historical
-characteristics of neighboring regions significantly influence current employment trends.
+characteristics of neighboring regions significantly influence current employment trends. Additionally
+there other more complex methods like spatial smoothing should be consider given that their spatila relationships
+do not seem to be consistent with each other.
 
 \printbibliography
 
@@ -126,15 +166,15 @@ characteristics of neighboring regions significantly influence current employmen
 	\centering
 	\begin{tabular}{lcc}
 		\toprule
-		\textbf{Variables}                     & \textbf{Mean} & \textbf{Standard Deviation} \\
+		\textbf{Variables}       & \textbf{Mean} & \textbf{Standard Deviation} \\
 		\midrule
-		Kaitz Index                            & 0.72          & 0.21                        \\
-		Total Employment                       & 1520.36       & 26.44                       \\
-		Own Car                                & 3800.25       & 5377.21                     \\
-		Has children under 6                   & 1520.36       & 1178.04                     \\
-		Has children between 6-17              & 3800.25       & 2879.77                     \\
-		Households under the SNAP              & 3741.17       & 2515.99                     \\
-		People with Social Security Disability & 41.36         & 42.86                       \\
+		K Index                  & 0.72          & 0.21                        \\
+		ZIP Employment           & 26.93         & 25.77                       \\
+		Commute by Car           & 6543.96       & 5363.64                     \\
+		Own Children under 6     & 1586.17       & 1196.55                     \\
+		Own Children 6-17        & 3920.28       & 2918.55                     \\
+		Food Stamp Participation & 3727.97       & 2447.43                     \\
+		With Social Security     & 42.06         & 43.28                       \\
 		\bottomrule
 	\end{tabular}
 	\caption{Descriptive Statistics for Main Variables}
@@ -146,14 +186,16 @@ characteristics of neighboring regions significantly influence current employmen
 		\toprule
 		\textbf{Variable}          & \textbf{Mean} & \textbf{3\% CI (Lower)} & \textbf{3\% CI (Upper)} \\
 		\midrule
-		Kaitz Index                & -10.063       & -13.387                 & -6.745                  \\
-		Spatial Kaitz Index        & -1.122        & -1.406                  & -0.844                  \\
-		Own Car                    & 0.000         & -0.001                  & 0.000                   \\
-		Has children under 6       & 0.006         & 0.004                   & 0.007                   \\
-		Has children between 6-17  & 0.000         & -0.001                  & 0.001                   \\
-		Households under SNAP      & 0.000         & -0.001                  & 0.000                   \\
-		Social Security Disability & 0.002         & -0.012                  & 0.008                   \\
-		Spatial Employment         & -0.001        & 0.000                   & 0.001                   \\
+		Kaitz Index                & -9.594        & -12.806                 & -6.093                  \\
+		Sigma                      & 8.164         & 8.013                   & 8.300                   \\
+		Intercept                  & 13.808        & 3.715                   & 23.321                  \\
+		Commute by Car             & -0.001        & -0.001                  & -0.000                  \\
+		Own Children under 6       & 0.005         & 0.004                   & 0.007                   \\
+		Own Children 6-17          & 0.000         & -0.001                  & 0.001                   \\
+		Food Stamp Participation   & -0.001        & -0.002                  & -0.000                  \\
+		Social Security Disability & 0.003         & -0.007                  & 0.013                   \\
+		WQ Employment              & -0.040        & -0.106                  & 0.036                   \\
+		WQ K Index                 & -1.139        & -8.625                  & 7.089                   \\
 		\bottomrule
 	\end{tabular}
 	\caption{Regression Results: Parameter Estimates and Confidence Intervals}
@@ -163,37 +205,144 @@ characteristics of neighboring regions significantly influence current employmen
 	\centering
 	\begin{tabular}{lc}
 		\toprule
-		\textbf{Variable}          & \textbf{R-Squared} \\
+		\textbf{Variable}          & \textbf{R-Hat} \\
 		\midrule
-		Kaitz Index                & 1.04               \\
-		Spatial Kaitz Index        & 1.23               \\
-		Own Car                    & 1.03               \\
-		Has children under 6       & 1.01               \\
-		Has children between 6-17  & 1.01               \\
-		Households under SNAP      & 1.04               \\
-		Social Security Disability & 1.00               \\
-		Spatial Employment         & 1.22               \\
+		Kaitz Index                & 1.00           \\
+		Sigma                      & 1.00           \\
+		Intercept                  & 1.01           \\
+		Commute by Car             & 1.01           \\
+		Own Children under 6       & 1.00           \\
+		Own Children 6-17          & 1.00           \\
+		Food Stamp Participation   & 1.00           \\
+		Social Security Disability & 1.00           \\
+		WQ Employment              & 1.00           \\
+		WQ K Index                 & 1.00           \\
+		\bottomrule
+	\end{tabular}
+	\caption{R-Hat for Individual Variables}
+\end{table}
+
+\begin{table}[H]
+	\centering
+	\begin{tabular}{lccc}
+		\toprule
+		\textbf{Variable}          & \textbf{Mean} & \textbf{3\% CI (Lower)} & \textbf{3\% CI (Upper)} \\
+		\midrule
+		Kaitz Index                & -9.687        & -12.917                 & -6.293                  \\
+		Sigma                      & 8.163         & 8.015                   & 8.307                   \\
+		Intercept                  & 14.758        & 4.748                   & 25.399                  \\
+		Commute by Car             & -0.001        & -0.001                  & -0.000                  \\
+		Own Children under 6       & 0.005         & 0.004                   & 0.007                   \\
+		Own Children 6-17          & 0.000         & -0.001                  & 0.001                   \\
+		Food Stamp Participation   & -0.001        & -0.002                  & -0.000                  \\
+		Social Security Disability & 0.002         & -0.008                  & 0.012                   \\
+		WK6 Employment             & 0.044         & -0.031                  & 0.113                   \\
+		WK6 K Index                & -2.916        & -11.209                 & 5.525                   \\
+		\bottomrule
+	\end{tabular}
+	\caption{Regression Results: Parameter Estimates and Confidence Intervals}
+\end{table}
+
+\begin{table}[H]
+	\centering
+	\begin{tabular}{lc}
+		\toprule
+		\textbf{Variable}          & \textbf{R-Hat} \\
+		\midrule
+		Kaitz Index                & 1.02           \\
+		Sigma                      & 1.00           \\
+		Intercept                  & 1.11           \\
+		Commute by Car             & 1.02           \\
+		Own Children under 6       & 1.01           \\
+		Own Children 6-17          & 1.01           \\
+		Food Stamp Participation   & 1.03           \\
+		Social Security Disability & 1.01           \\
+		WK6 Employment             & 1.02           \\
+		WK6 K Index                & 1.08           \\
 		\bottomrule
 	\end{tabular}
 	\caption{R-Squared for Individual Variables}
 \end{table}
 
+
+\begin{table}[H]
+	\centering
+	\begin{tabular}{lccc}
+		\toprule
+		\textbf{Variable}          & \textbf{Mean} & \textbf{3\% CI (Lower)} & \textbf{3\% CI (Upper)} \\
+		\midrule
+		Kaitz Index                & -9.650        & -13.154                 & -6.244                  \\
+		Sigma                      & 8.160         & 8.009                   & 8.307                   \\
+		Intercept                  & 17.368        & -5.015                  & 45.195                  \\
+		Commute by Car             & -0.001        & -0.001                  & -0.000                  \\
+		Own Children under 6       & 0.005         & 0.004                   & 0.007                   \\
+		Own Children 6-17          & 0.000         & -0.001                  & 0.001                   \\
+		Food Stamp Participation   & -0.001        & -0.002                  & -0.000                  \\
+		Social Security Disability & 0.004         & -0.005                  & 0.014                   \\
+		WD30 Employment            & -0.301        & -0.519                  & -0.090                  \\
+		WD30 K Index               & -0.084        & -28.740                 & 23.926                  \\
+		\bottomrule
+	\end{tabular}
+	\caption{Regression Results: Parameter Estimates and Confidence Intervals}
+\end{table}
+
+\begin{table}[H]
+	\centering
+	\begin{tabular}{lc}
+		\toprule
+		\textbf{Variable}          & \textbf{R-Hat} \\
+		\midrule
+		Kaitz Index                & 1.03           \\
+		Sigma                      & 1.00           \\
+		Intercept                  & 1.03           \\
+		Commute by Car             & 1.02           \\
+		Own Children under 6       & 1.00           \\
+		Own Children 6-17          & 1.00           \\
+		Food Stamp Participation   & 1.01           \\
+		Social Security Disability & 1.00           \\
+		WD30 Employment            & 1.01           \\
+		WD30 K Index               & 1.04           \\
+		\bottomrule
+	\end{tabular}
+	\caption{R-Squared for Individual Variables}
+\end{table}
+
+
 \begin{figure}[H]
 	\centering
 	\begin{minipage}[t]{0.48\textwidth}
 		\centering
-		\includegraphics[width=\textwidth]{priori.png}
+		\includegraphics[width=\textwidth]{assets/queen_posterior.png}
 		\caption{Non-informative Priori used}
-		\label{fig:priori}
+		\label{fig:queen}
 	\end{minipage}
 	\hfill
 	\begin{minipage}[t]{0.48\textwidth}
 		\centering
-		\includegraphics[width=\textwidth]{results.png}
-		\caption{Summary of Regression Results}
-		\label{fig:results}
+		\includegraphics[width=\textwidth]{assets/knn6_posterior.png}
+		\caption{Summary of Regression Results (Distance)}
+		\label{fig:knn6}
 	\end{minipage}
 \end{figure}
+
+
+\begin{figure}[H]
+	\centering
+	\begin{minipage}[t]{0.48\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{assets/distance_posterior.png}
+		\caption{Non-informative Priori used}
+		\label{fig:distance}
+	\end{minipage}
+	\hfill
+	\begin{minipage}[t]{0.48\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{assets/tensor_plot.png}
+		\caption{Summary of Regression Results (Distance)}
+		\label{fig:tensor}
+	\end{minipage}
+\end{figure}
+
 
 
 \end{document}
