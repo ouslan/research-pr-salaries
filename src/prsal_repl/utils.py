@@ -227,8 +227,20 @@ class DataUtils(CleanQCEW):
         base = gdf[(gdf["year"] == 2012) & (gdf["qtr"] == 4)].copy()
         base = base.sort_values("zipcode")
 
-        w = weights.Queen.from_dataframe(base)
-        w.transform = "r"
+        # Project for distance calculations
+        base_proj = base.to_crs(epsg=5070)
+
+        w_queen = weights.Queen.from_dataframe(base)
+        w_queen.transform = "r"
+
+        w_knn6 = weights.KNN.from_dataframe(base_proj, k=6)
+        w_knn6.transform = "r"
+
+        w_dist30 = weights.DistanceBand.from_dataframe(
+            base_proj, threshold=48280, binary=True, silence_warnings=True
+        )
+
+        w_dist30.transform = "r"
 
         zip_order = base["zipcode"].values
 
@@ -237,28 +249,24 @@ class DataUtils(CleanQCEW):
         for year in range(2012, 2024):
             for qtr in range(1, 5):
 
-                group_df = gdf[
-                    (gdf["year"] == year) & (gdf["qtr"] == qtr)
-                ].copy()
+                group_df = gdf[(gdf["year"] == year) & (gdf["qtr"] == qtr)].copy()
 
-                # enforce identical zipcode ordering
-                group_df = (
-                    group_df
-                    .set_index("zipcode")
-                    .loc[zip_order]
-                    .reset_index()
-                )
+                group_df = group_df.set_index("zipcode").loc[zip_order].reset_index()
 
-                spatial_lag_y = weights.lag_spatial(
-                    w, group_df["zip_employment"].values
-                )
+                y_vals = group_df["zip_employment"].values
+                x_vals = group_df["k_index"].values
 
-                spatial_lag_x = weights.lag_spatial(
-                    w, group_df["k_index"].values
-                )
+                # Queen
+                group_df["wq_employment"] = weights.lag_spatial(w_queen, y_vals)
+                group_df["wq_k_index"] = weights.lag_spatial(w_queen, x_vals)
 
-                group_df["w_employment"] = spatial_lag_y
-                group_df["w_k_index"] = spatial_lag_x
+                # KNN6
+                group_df["wk6_employment"] = weights.lag_spatial(w_knn6, y_vals)
+                group_df["wk6_k_index"] = weights.lag_spatial(w_knn6, x_vals)
+
+                # Distance 30 miles
+                group_df["wd30_employment"] = weights.lag_spatial(w_dist30, y_vals)
+                group_df["wd30_k_index"] = weights.lag_spatial(w_dist30, x_vals)
 
                 spatial_lag_results.append(group_df)
 
@@ -317,7 +325,9 @@ class DataUtils(CleanQCEW):
                 )
                 df = pl.DataFrame(r)
                 df = df.rename(df.row(0, named=True))
-                df = df.slice(1).with_columns(pl.col("*").exclude("zip code tabulation area").cast(pl.Float32))
+                df = df.slice(1).with_columns(
+                    pl.col("*").exclude("zip code tabulation area").cast(pl.Float32)
+                )
                 df = df.rename(
                     {
                         "DP03_0001E": "total_population",
@@ -358,13 +368,22 @@ class DataUtils(CleanQCEW):
                 url="https://www2.census.gov/geo/tiger/TIGER2024/ZCTA520/tl_2024_us_zcta520.zip",
                 filename=f"{tempfile.gettempdir()}/{hash(file_path)}.zip",
             )
-
-            # Process and insert the shape files
+            # Process files
             gdf = gpd.read_file(f"{tempfile.gettempdir()}/{hash(file_path)}.zip")
             gdf = gdf.rename(columns={"ZCTA5CE20": "zipcode"})
-            gdf = gdf[gdf["zipcode"].str.startswith("00")].reset_index()
+            gdf = gdf[gdf["zipcode"].str.startswith("00")].reset_index(drop=True)
             gdf = gdf[["zipcode", "geometry"]]
             gdf["zipcode"] = gdf["zipcode"].str.strip()
+
+            # Remove disjointed goemetries
+            gdf = gdf[~gdf["zipcode"].isin(["00820", "00850", "00851"])]
+            gdf = gdf.to_crs(epsg=5070)
+            gdf = gdf.explode(ignore_index=True)
+            connected_mask = gdf.geometry.apply(
+                lambda geom: gdf.geometry.intersects(geom).sum() > 1
+            )
+            gdf = gdf.loc[connected_mask]
+            gdf = gdf.dissolve(by="zipcode", as_index=False)
             gdf.to_parquet(file_path)
             logging.info(
                 f"The zipstable is empty inserting {self.saving_dir}external/cousub.zip"
