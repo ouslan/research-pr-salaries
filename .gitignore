@@ -188,3 +188,6 @@ aux/
 *.gz
 
 *.csv
+*.nav
+/docs/presentation.snm
+/docs/presentation.toc
