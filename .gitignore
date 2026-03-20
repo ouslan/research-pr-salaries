@@ -176,7 +176,6 @@ data/qcew
 *.sqlite
 *.ddb
 *.wal
-aux/
 *.aux
 *.bbl
 *.blg
@@ -186,8 +185,7 @@ aux/
 *.out
 *.xml
 *.gz
-
 *.csv
 *.nav
-/docs/presentation.snm
-/docs/presentation.toc
+*.snm
+*.toc

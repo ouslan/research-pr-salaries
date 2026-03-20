@@ -14,6 +14,18 @@
 
 \usetheme{Madrid}
 
+\usepackage{csquotes}
+% --- BIBLIOGRAPHY SETTINGS ---
+\usepackage[backend=biber,style=numeric,sorting=none]{biblatex}
+\addbibresource{references.bib} 
+
+% Script to make bibliography font smaller for Beamer
+\setbeamerfont{bibliography item}{size=\tiny}
+\setbeamerfont{bibliography entry author}{size=\tiny}
+\setbeamerfont{bibliography entry title}{size=\tiny}
+\setbeamerfont{bibliography entry location}{size=\tiny}
+\setbeamerfont{bibliography entry note}{size=\tiny}
+
 % -------- FOOTER PERSONALIZADO --------
 \newcommand{\eventname}{MEA 2026}
 
@@ -154,9 +166,9 @@
 
 \begin{frame}{Literature Summary}
 	\begin{itemize}
-		\item \textbf{Negative Relationship:} Freeman (1992) found 8\%--10\% employment reduction; Neumark (2000) linked high minimum wages to high unemployment.
-		\item \textbf{Mixed Results:} Card \& Krueger (1994) found no significant effect; Caraballo-Cueto (2016) observed slight positive short-run effects.
-		\item \textbf{Puerto Rico Specific:} Federal Reserve (2012) suggested subminimum wages for youth; Hernández (2017) found total employment reductions post-increase.
+		\item \textbf{Negative Relationship:} Freeman (1992) \cite{castillo1992minimum} found 8\%--10\% employment reduction; Neumark (2000) \cite{neumark2000minimum} linked high minimum wages to high unemployment.
+		\item \textbf{Mixed Results:} Card \& Krueger (1994) \cite{card1994comment} found no significant effect; Caraballo-Cueto (2016) \cite{caraballo2016there} observed slight positive short-run effects.
+		\item \textbf{Puerto Rico Specific:} Federal Reserve (2012) \cite{torres2012competitividad} suggested subminimum wages; Hernández (2017) found reductions post-increase.
 	\end{itemize}
 \end{frame}
 
@@ -181,7 +193,7 @@
 \end{frame}
 
 \begin{frame}{Spatial Durbin Model (SDM)}
-	To account for spatial dependence, we use:
+	To account for spatial dependence, we use \cite{lee2016identification}:
 	\[
 		Y_{it} = \alpha + \beta_1 X_{it} + \rho W Y_{it} + \gamma W X_{it} + \epsilon_{it}
 	\]
@@ -316,6 +328,11 @@
 			      \item Utilize more complex spatial smoothing given the non-uniform nature of regional relationships.
 		      \end{itemize}
 	\end{itemize}
+\end{frame}
+
+\section{References}
+\begin{frame}[allowframebreaks]{References}
+	\printbibliography
 \end{frame}
 
 \begin{frame}
