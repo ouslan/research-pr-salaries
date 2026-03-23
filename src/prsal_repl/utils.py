@@ -230,7 +230,7 @@ class DataUtils(CleanQCEW):
         # Project for distance calculations
         base_proj = base.to_crs(epsg=5070)
 
-        w_queen = weights.Queen.from_dataframe(base)
+        w_queen = weights.Queen.from_dataframe(base, use_index=True)
         w_queen.transform = "r"
 
         w_knn6 = weights.KNN.from_dataframe(base_proj, k=6)
@@ -354,7 +354,8 @@ class DataUtils(CleanQCEW):
                 )
                 df = df.rename({"zip code tabulation area": "zipcode"})
                 df = df.with_columns(year=_year)
-                df = df.select(pl.col("*").exclude("state"))
+                df = df.select(pl.col("*").exclude("states"))
+                df = df.select(pl.col("*").exclude("state", "states"))
                 df.write_parquet(file=file_path)
                 logging.info(f"succesfully inserting {_year}")
         return self.conn.sql(
